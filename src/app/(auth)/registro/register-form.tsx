@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRegisterViewModel } from "@/view-models/auth/use-register-vm";
+import { academicPrograms } from "@/data/academic-programs";
 
 export function RegisterForm() {
   const { form, handleChange, handleSelectChange, handleSubmit, loading } = useRegisterViewModel();
@@ -56,11 +57,16 @@ export function RegisterForm() {
                   <SelectValue placeholder="Selecciona tu facultad o programa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ingenieria">Facultad de ingeniería</SelectItem>
-                  <SelectItem value="derecho">Facultad de derecho</SelectItem>
-                  <SelectItem value="administracion">Administración de empresas</SelectItem>
-                  <SelectItem value="economia">Economía</SelectItem>
-                  <SelectItem value="ciencias">Ciencias Básicas</SelectItem>
+                  {academicPrograms.map((faculty) => (
+                    <SelectGroup key={faculty.name}>
+                      <SelectLabel>{faculty.name}</SelectLabel>
+                      {faculty.programs.map((program) => (
+                        <SelectItem key={program.value} value={program.value}>
+                          {program.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
