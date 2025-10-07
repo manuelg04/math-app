@@ -1,0 +1,61 @@
+{
+  "count": 35,
+  "numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35
+  ],
+  "sample": {
+    "number": 1,
+    "promptMd": "En una reunión de seguimiento del rendimiento de la línea de producción de una fábrica, el gerente muestra la siguiente tabla con el número de unidades ensambladas durante los primeros seis meses del año para evaluar la consistencia operativa:  \n\n| Mes    | Unidades ensambladas |\n|--------|----------------------|\n| Enero  | 130                  |\n| Febrero| 120                  |\n| Marzo  | 130                  |\n| Abril  | 170                  |\n| Mayo   | 130                  |\n| Junio  | 160                  |\n\nPara planificar mejoras en la productividad, ¿cuál es el rango estadístico del número de unidades ensambladas durante esos seis meses?",
+    "options": [
+      "30",
+      "50",
+      "130",
+      "140"
+    ],
+    "optionLabels": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correctLetter": "B",
+    "competency": "Interpretación y representación",
+    "evidence": "I1. El estudiante da cuenta de las características básicas de la información presentada en formatos como series, gráficas, tablas y esquemas.",
+    "contentArea": "Estadística",
+    "context": "Laboral u ocupacional"
+  }
+}

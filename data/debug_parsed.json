@@ -1,0 +1,60 @@
+{
+  "count": 34,
+  "numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35
+  ],
+  "sample": {
+    "number": 1,
+    "competency": "Interpretación y representación",
+    "evidence": "I1. El estudiante da cuenta de las características básicas de la información presentada en formatos como series, gráficas, tablas y esquemas.",
+    "contentArea": "Estadística",
+    "context": "Laboral u ocupacional",
+    "correctLetter": "B",
+    "promptMd": "<p>En una reunión de seguimiento del rendimiento de la línea de producción de una fábrica, el gerente muestra la siguiente tabla con el número de unidades ensambladas durante los primeros seis meses del año para evaluar la consistencia operativa:</p><table><tbody><tr><td><p><strong>Mes</strong></p></td><td><p><strong>Unidades ensambladas</strong></p></td></tr><tr><td><p>Enero</p></td><td><p>130</p></td></tr><tr><td><p>Febrero</p></td><td><p>120</p></td></tr><tr><td><p>Marzo</p></td><td><p>130</p></td></tr><tr><td><p>Abril</p></td><td><p>170</p></td></tr><tr><td><p>Mayo</p></td><td><p>130</p></td></tr><tr><td><p>Junio</p></td><td><p>160</p></td></tr></tbody></table><p>Para planificar mejoras en la productividad, ¿cuál es el rango estadístico del número de unidades ensambladas durante esos seis meses?</p>\n<p><strong>Mes</strong></p> <p><strong>Unidades ensambladas</strong></p>\n<p>Enero</p> <p>130</p>\n<p>Febrero</p> <p>120</p>\n<p>Marzo</p> <p>130</p>\n<p>Abril</p> <p>170</p>\n<p>Mayo</p> <p>130</p>\n<p>Junio</p> <p>160</p>",
+    "options": [
+      "-   30",
+      "-   50",
+      "-   130",
+      "-   140"
+    ],
+    "optionLabels": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ]
+  }
+}

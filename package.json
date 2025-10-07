@@ -6,20 +6,30 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:saberpro:md": "node scripts/seed_saberpro_from_md.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-select": "^2.2.6",
     "@vercel/blob": "^2.0.0",
+    "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.0",
     "lucide-react": "^0.544.0",
+    "mammoth": "^1.11.0",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "tailwind-merge": "^3.3.1"
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.3.1",
+    "turndown": "^7.2.1",
+    "turndown-plugin-gfm": "^1.0.2",
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDashboardViewModel, type DashboardData } from "@/view-models/dashboard/use-dashboard-vm";
 
@@ -55,6 +56,31 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
             Recibirás notificaciones cuando publiquemos los nuevos desafíos.
           </p>
         </article>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold text-foreground">Exámenes Disponibles</h2>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Link
+            href="/dashboard/exams/saberpro_exam"
+            className="group block rounded-2xl border border-border bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md"
+          >
+            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
+              Prueba de Entrada – Salida
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Prueba diagnóstica de 35 preguntas para evaluar competencias en razonamiento cuantitativo.
+            </p>
+            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+              <span>📊 35 preguntas</span>
+              <span>⏱️ 45-60 minutos</span>
+              <span>📝 Selección múltiple</span>
+            </div>
+            <Button className="mt-4 w-full">
+              Iniciar Examen
+            </Button>
+          </Link>
+        </div>
       </section>
     </main>
   );

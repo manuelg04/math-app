@@ -28,6 +28,110 @@ model User {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
+  examAttempts       ExamAttempt[]
+
   @@map("users")
   @@index([email])
+}
+model Exam {
+  id          String    @id @default(uuid()) @map("id")
+  slug        String    @unique @map("slug")
+  title       String    @map("title")
+  description String?   @map("description")
+  version     Int       @default(1) @map("version")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  questions      Question[]
+  examAttempts   ExamAttempt[]
+
+  @@map("exams")
+  @@index([slug])
+}
+
+model Question {
+  id           String   @id @default(uuid()) @map("id")
+  examId       String   @map("exam_id")
+  orderIndex   Int      @map("order_index")
+  code         String?  @map("code")
+  prompt       String   @map("prompt_md")
+  competency   String?  @map("competency")
+  evidence     String?  @map("evidence")
+  contentArea  String?  @map("content_area")
+  context      String?  @map("context")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  exam           Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  choices        Option[]
+  examResponses  ExamResponse[]
+
+  @@unique([examId, orderIndex])
+  @@map("questions")
+  @@index([examId])
+}
+
+
+model Option {
+  id          String   @id @default(uuid()) @map("id")
+  questionId  String   @map("question_id")
+  label       String   @map("label")
+  text        String   @map("text")
+  isCorrect   Boolean  @default(false) @map("is_correct")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  question       Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  examResponses  ExamResponse[]
+
+  @@unique([questionId, label])
+  @@map("options")
+  @@index([questionId])
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+}
+
+model ExamAttempt {
+  id            String        @id @default(uuid()) @map("id")
+  userId        String        @map("user_id")
+  examId        String        @map("exam_id")
+  startedAt     DateTime      @default(now()) @map("started_at")
+  submittedAt   DateTime?     @map("submitted_at")
+  timeSpent     Int?          @map("time_spent")
+  score         Float?        @map("score")
+  status        AttemptStatus @default(IN_PROGRESS) @map("status")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam          Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  responses     ExamResponse[]
+
+  @@map("exam_attempts")
+  @@index([userId])
+  @@index([examId])
+  @@index([status])
+}
+
+model ExamResponse {
+  id               String    @id @default(uuid()) @map("id")
+  attemptId        String    @map("attempt_id")
+  questionId       String    @map("question_id")
+  selectedOptionId String?   @map("selected_option_id")
+  answeredAt       DateTime  @default(now()) @map("answered_at")
+  isCorrect        Boolean?  @map("is_correct")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption Option?     @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("exam_responses")
+  @@index([attemptId])
+  @@index([questionId])
 }
