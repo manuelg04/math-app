@@ -41,29 +41,43 @@ export function useRegisterViewModel() {
   const handleSubmit = React.useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      console.log("Register form submission started");
       setLoading(true);
       try {
+        const requestBody = {
+          email: form.email,
+          password: form.password,
+          academicProgram: form.academicProgram,
+          acceptedTos: form.acceptedTos,
+        };
+        console.log("Register request body:", { ...requestBody, password: "[REDACTED]" });
+        
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: form.email,
-            password: form.password,
-            academicProgram: form.academicProgram,
-            acceptedTos: form.acceptedTos,
-          }),
+          body: JSON.stringify(requestBody),
         });
+        
+        console.log("Register response status:", response.status, response.statusText);
+        
         const data = await response.json();
+        console.log("Register response data:", data);
+        
         if (!response.ok) {
+          console.error("Register failed with error:", data?.message);
           throw new Error(data?.message ?? "No pudimos crear tu cuenta");
         }
+        
+        console.log("Register successful, redirecting to:", data?.redirect ?? "/dashboard");
         toast({ variant: "success", title: "Cuenta creada", description: data.message ?? "Registro exitoso" });
         setForm(INITIAL_STATE);
         router.push((data?.redirect as string | undefined) ?? "/dashboard");
       } catch (error) {
+        console.error("Register error:", error);
         toast({ variant: "error", description: error instanceof Error ? error.message : "Error inesperado" });
       } finally {
         setLoading(false);
+        console.log("Register form submission completed");
       }
     },
     [form.acceptedTos, form.email, form.password, form.academicProgram, router, toast],
