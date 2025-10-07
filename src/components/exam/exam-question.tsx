@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -12,7 +12,19 @@ type ExamQuestionProps = {
   prompt: string;
 };
 
+function sanitizePrompt(input: string): string {
+  if (!input) return input;
+  // Elimina líneas o segmentos tipo [Imagen: ...] o [Image: ...]
+  // - case-insensitive
+  // - en cualquier parte (líneas completas o al final del texto)
+  const removeImageMeta = input.replace(/\[(imagen|image):[^\]]*\]/gi, "");
+  // Limpia espacios en exceso que puedan quedar
+  return removeImageMeta.trim();
+}
+
 export function ExamQuestion({ questionNumber, totalQuestions, prompt }: ExamQuestionProps) {
+  const cleanedPrompt = React.useMemo(() => sanitizePrompt(prompt), [prompt]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -46,18 +58,18 @@ export function ExamQuestion({ questionNumber, totalQuestions, prompt }: ExamQue
             thead: ({ children }) => <thead className="bg-gray-50">{children}</thead>,
             tbody: ({ children }) => <tbody>{children}</tbody>,
             th: ({ children }) => (
-              <th className="px-4 py-2 text-left text-sm font-semibold border border-gray-300">
+              <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">
                 {children}
               </th>
             ),
             td: ({ children }) => (
-              <td className="px-4 py-2 text-sm border border-gray-300 align-top">{children}</td>
+              <td className="border border-gray-300 px-4 py-2 text-sm align-top">{children}</td>
             ),
             p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
             strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
           }}
         >
-          {prompt}
+          {cleanedPrompt}
         </ReactMarkdown>
       </div>
     </div>
