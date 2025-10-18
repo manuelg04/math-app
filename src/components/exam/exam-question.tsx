@@ -3,7 +3,9 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import Image from "next/image";
 
 type ExamQuestionProps = {
@@ -14,12 +16,49 @@ type ExamQuestionProps = {
 
 function sanitizePrompt(input: string): string {
   if (!input) return input;
-  // Elimina líneas o segmentos tipo [Imagen: ...] o [Image: ...]
-  // - case-insensitive
-  // - en cualquier parte (líneas completas o al final del texto)
+  // Solo elimina placeholders tipo [image: ...] o [imagen: ...] si llegaran a existir.
   const removeImageMeta = input.replace(/\[(imagen|image):[^\]]*\]/gi, "");
-  // Limpia espacios en exceso que puedan quedar
   return removeImageMeta.trim();
+}
+
+function resolvePublicSrc(src: string): string {
+  const s = src.trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
+function MarkdownImage(props: { src?: string; alt?: string }) {
+  const { src, alt } = props;
+  const [useFallback, setUseFallback] = React.useState(false);
+
+  if (!src || typeof src !== "string") return null;
+
+  const resolved = resolvePublicSrc(src);
+
+  if (useFallback) {
+    return (
+      <img
+        src={resolved}
+        alt={alt || "Imagen de la pregunta"}
+        className="my-4 mx-auto block max-w-full rounded-lg h-auto"
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={resolved}
+      alt={alt || "Imagen de la pregunta"}
+      className="my-4 mx-auto block max-w-full rounded-lg h-auto"
+      width={1200}
+      height={900}
+      sizes="100vw"
+      // Clave: evitar el optimizer para rutas que pueden colisionar con /exams/[slug]
+      unoptimized
+      onError={() => setUseFallback(true)}
+      priority={false}
+    />
+  );
 }
 
 export function ExamQuestion({ questionNumber, totalQuestions, prompt }: ExamQuestionProps) {
@@ -35,21 +74,10 @@ export function ExamQuestion({ questionNumber, totalQuestions, prompt }: ExamQue
 
       <div className="prose prose-sm max-w-none rounded-lg border border-border bg-white p-6 text-foreground">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeRaw, rehypeKatex]}
           components={{
-            img: ({ src, alt }) => {
-              if (!src || typeof src !== "string") return null;
-              return (
-                <Image
-                  src={src}
-                  alt={alt || "Imagen de la pregunta"}
-                  className="my-4 mx-auto block max-w-full rounded-lg"
-                  width={1024}
-                  height={768}
-                />
-              );
-            },
+            img: ({ src, alt }) => <MarkdownImage src={typeof src === "string" ? src : ""} alt={alt} />,
             table: ({ children }) => (
               <div className="my-4 overflow-x-auto">
                 <table className="min-w-full border border-gray-300">{children}</table>

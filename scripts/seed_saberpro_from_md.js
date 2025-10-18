@@ -65,9 +65,7 @@ function extractInlineMeta(body, label) {
  */
 function extractBlock(body, startLabel, endLabel) {
   const startRe = new RegExp(`\\*\\*${startLabel}:\\*\\*\\s*`);
-  const endRe = endLabel
-    ? new RegExp(`\\*\\*${endLabel}:\\*\\*`)
-    : null;
+  const endRe = endLabel ? new RegExp(`\\*\\*${endLabel}:\\*\\*`) : null;
 
   const startMatch = body.match(startRe);
   if (!startMatch) return "";
@@ -86,6 +84,7 @@ function extractBlock(body, startLabel, endLabel) {
 /**
  * Parsea opciones desde un bloque con líneas que empiezan con A./A) ... D./D)
  * Soporta contenido multilínea (tablas, imágenes, etc.) entre marcadores.
+ * Además detecta si la opción es una imagen con patrón ![alt](url)
  */
 function parseOptions(optionsBlock) {
   const text = normEOL(optionsBlock);
@@ -96,30 +95,40 @@ function parseOptions(optionsBlock) {
   while ((m = markerRe.exec(text)) !== null) {
     markers.push({ letter: m[1], index: m.index, len: m[0].length });
   }
-  if (markers.length < 2) {
-    // Fallback: intenta detectar "A. xxx" todo en una línea
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const simple = lines
-      .filter((l) => /^[A-D][.)]\s+/.test(l))
-      .map((l) => l.replace(/^[A-D][.)]\s+/, "").trim());
-    if (simple.length >= 2) {
-      while (simple.length < 4) simple.push("");
-      return simple.slice(0, 4);
+
+  const results = [];
+
+  if (markers.length >= 2) {
+    for (let i = 0; i < markers.length; i++) {
+      const start = markers[i].index + markers[i].len;
+      const end = i + 1 < markers.length ? markers[i + 1].index : text.length;
+      const raw = text.slice(start, end).trim();
+      results.push({ letter: markers[i].letter, raw });
     }
-    return [];
+  } else {
+    // Fallback simple: A) xxx en una línea
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (const l of lines) {
+      const lm = l.match(/^([A-D])[.)]\s+(.+)$/);
+      if (lm) results.push({ letter: lm[1], raw: lm[2] });
+    }
   }
 
-  const result = [];
-  for (let i = 0; i < markers.length; i++) {
-    const start = markers[i].index + markers[i].len;
-    const end = i + 1 < markers.length ? markers[i + 1].index : text.length;
-    const raw = text.slice(start, end).trim();
-    result.push(raw);
+  // Normalizar a 4
+  const letters = ["A", "B", "C", "D"];
+  const byLetter = new Map(results.map((r) => [r.letter, r.raw]));
+  const out = [];
+  for (const L of letters) {
+    const raw = byLetter.has(L) ? byLetter.get(L).trim() : "";
+    // Detectar imagen ![...](url)
+    const imgMatch = raw.match(/!\[[^\]]*?\]\(([^)]+)\)/);
+    const imageUrl = imgMatch ? imgMatch[1].trim() : null;
+    // Texto plano (sin el tag de imagen)
+    const textOnly = imageUrl ? raw.replace(/!\[[^\]]*?\]\([^)]+?\)/, "").trim() : raw;
+    out.push({ label: L, text: textOnly || null, imageUrl });
   }
 
-  // Asegura longitud 4 si acaso faltara alguno
-  while (result.length < 4) result.push("");
-  return result.slice(0, 4);
+  return out;
 }
 
 /**
@@ -143,6 +152,10 @@ function parseMarkdown(md) {
     const optionsBlock = extractBlock(b.body, "Opciones de respuesta", null);
     const options = parseOptions(optionsBlock);
 
+    // NUEVO: Ayudas
+    const help1 = extractBlock(b.body, "Ayuda 1", "Ayuda 2");
+    const help2 = extractBlock(b.body, "Ayuda 2", null);
+
     // Validaciones mínimas
     if (!Number.isInteger(number)) {
       throw new Error(`Pregunta con número inválido: "${number}"`);
@@ -159,18 +172,19 @@ function parseMarkdown(md) {
 
     questions.push({
       number,
-      promptMd: promptMd.trim(),
-      options: options.map((o) => o.trim()),
-      optionLabels: ["A", "B", "C", "D"],
+      promptMd: cleanText(promptMd),
+      options,
       correctLetter,
       competency: competency || null,
       evidence: evidence || null,
       contentArea: contentArea || null,
       context: context || null,
+      help1Md: help1 || null,
+      help2Md: help2 || null,
     });
   }
 
-  // Orden y duplicados por si acaso
+  // Orden y duplicados
   const byNum = new Map();
   for (const q of questions) {
     if (!byNum.has(q.number)) byNum.set(q.number, q);
@@ -188,6 +202,7 @@ async function upsertExam() {
     create: { slug: EXAM_SLUG, title: EXAM_TITLE, description: EXAM_DESCRIPTION, version: 1, isActive: true },
   });
 }
+
 async function upsertQuestionWithOptions(examId, q) {
   const existing = await prisma.question.findFirst({
     where: { examId, orderIndex: q.number },
@@ -205,6 +220,8 @@ async function upsertQuestionWithOptions(examId, q) {
         evidence: q.evidence,
         contentArea: q.contentArea,
         context: q.context,
+        help1Md: q.help1Md,
+        help2Md: q.help2Md,
       },
       select: { id: true },
     });
@@ -221,6 +238,8 @@ async function upsertQuestionWithOptions(examId, q) {
         evidence: q.evidence,
         contentArea: q.contentArea,
         context: q.context,
+        help1Md: q.help1Md,
+        help2Md: q.help2Md,
       },
       select: { id: true },
     });
@@ -228,13 +247,16 @@ async function upsertQuestionWithOptions(examId, q) {
   }
 
   const correctIdx = q.correctLetter.charCodeAt(0) - "A".charCodeAt(0);
+  const labels = ["A", "B", "C", "D"];
 
-  for (let i = 0; i < q.options.length; i++) {
+  for (let i = 0; i < labels.length; i++) {
+    const opt = q.options[i];
     await prisma.option.create({
       data: {
         questionId,
-        label: q.optionLabels[i],
-        text: q.options[i],
+        label: labels[i],
+        text: opt.text,            // puede ser null
+        imageUrl: opt.imageUrl,    // puede ser null
         isCorrect: i === correctIdx,
       },
     });

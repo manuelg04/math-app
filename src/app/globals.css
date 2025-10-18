@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "katex/dist/katex.min.css";
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,3 +124,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+html, body {
+  height: 100%;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+  margin: 0.75rem 0 !important;
+}
+
+.prose .katex { font-size: 1em; }            /* tamaño de inline math */
+.prose .katex-display .katex { font-size: 1.05em; } /* tamaño de display math */

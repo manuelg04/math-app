@@ -2,18 +2,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function startExamAttempt(userId: string, examId: string) {
   const attempt = await prisma.examAttempt.create({
-    data: {
-      userId,
-      examId,
-      status: "IN_PROGRESS",
-    },
-    select: {
-      id: true,
-      startedAt: true,
-      status: true,
-    },
+    data: { userId, examId, status: "IN_PROGRESS" },
+    select: { id: true, startedAt: true, status: true },
   });
-
   return { success: true, attempt };
 }
 
@@ -29,20 +20,12 @@ export async function getExamAttemptById(attemptId: string, userId: string) {
       score: true,
       status: true,
       responses: {
-        select: {
-          id: true,
-          questionId: true,
-          selectedOptionId: true,
-          isCorrect: true,
-        },
+        select: { id: true, questionId: true, selectedOptionId: true, isCorrect: true },
       },
     },
   });
 
-  if (!attempt) {
-    return { success: false, error: "Intento no encontrado" };
-  }
-
+  if (!attempt) return { success: false, error: "Intento no encontrado" };
   return { success: true, attempt };
 }
 
@@ -52,79 +35,43 @@ export async function saveAnswer(
   selectedOptionId: string,
   userId: string
 ) {
-  // Verificar que el intento pertenece al usuario y está en progreso
+  // 1) El intento debe pertenecer al usuario y estar en progreso
   const attempt = await prisma.examAttempt.findFirst({
     where: { id: attemptId, userId, status: "IN_PROGRESS" },
   });
+  if (!attempt) return { success: false, error: "Intento no válido" };
 
-  if (!attempt) {
-    return { success: false, error: "Intento no válido" };
-  }
-
-  // Verificar si la opción es correcta
+  // 2) La opción debe pertenecer a la pregunta
   const option = await prisma.option.findUnique({
     where: { id: selectedOptionId },
     select: { isCorrect: true, questionId: true },
   });
-
   if (!option || option.questionId !== questionId) {
     return { success: false, error: "Opción no válida" };
   }
 
-  // Upsert la respuesta
+  // 3) Upsert respuesta
   const response = await prisma.examResponse.upsert({
-    where: {
-      attemptId_questionId: {
-        attemptId,
-        questionId,
-      },
-    },
-    create: {
-      attemptId,
-      questionId,
-      selectedOptionId,
-      isCorrect: option.isCorrect,
-    },
-    update: {
-      selectedOptionId,
-      isCorrect: option.isCorrect,
-      answeredAt: new Date(),
-    },
-    select: {
-      id: true,
-      questionId: true,
-      selectedOptionId: true,
-      isCorrect: true,
-    },
+    where: { attemptId_questionId: { attemptId, questionId } },
+    create: { attemptId, questionId, selectedOptionId, isCorrect: option.isCorrect },
+    update: { selectedOptionId, isCorrect: option.isCorrect, answeredAt: new Date() },
+    select: { id: true, questionId: true, selectedOptionId: true, isCorrect: true },
   });
 
   return { success: true, response };
 }
 
 export async function submitExamAttempt(attemptId: string, userId: string, timeSpent: number) {
-  // Verificar que el intento pertenece al usuario
   const attempt = await prisma.examAttempt.findFirst({
     where: { id: attemptId, userId, status: "IN_PROGRESS" },
-    include: {
-      responses: true,
-      exam: {
-        include: {
-          questions: true,
-        },
-      },
-    },
+    include: { responses: true, exam: { include: { questions: true } } },
   });
+  if (!attempt) return { success: false, error: "Intento no válido" };
 
-  if (!attempt) {
-    return { success: false, error: "Intento no válido" };
-  }
-
-  // Calcular puntaje
   const totalQuestions = attempt.exam.questions.length;
   const correctAnswers = attempt.responses.filter((r) => r.isCorrect === true).length;
   const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
-  // Actualizar el intento
   const updatedAttempt = await prisma.examAttempt.update({
     where: { id: attemptId },
     data: {
@@ -133,13 +80,7 @@ export async function submitExamAttempt(attemptId: string, userId: string, timeS
       timeSpent,
       score,
     },
-    select: {
-      id: true,
-      submittedAt: true,
-      timeSpent: true,
-      score: true,
-      status: true,
-    },
+    select: { id: true, submittedAt: true, timeSpent: true, score: true, status: true },
   });
 
   return {
@@ -151,4 +92,33 @@ export async function submitExamAttempt(attemptId: string, userId: string, timeS
       incorrectAnswers: totalQuestions - correctAnswers,
     },
   };
+}
+
+/**
+ * Registrar uso de ayuda (Ayuda 1 / Ayuda 2 / AI futura)
+ * Evita duplicados por (attemptId, questionId, aidKey).
+ */
+export async function logAidUsage(
+  attemptId: string,
+  questionId: string,
+  aidKey: "AID1" | "AID2" | "AI_ASSIST",
+  userId: string
+) {
+  // Validar intento del usuario en progreso
+  const attempt = await prisma.examAttempt.findFirst({
+    where: { id: attemptId, userId, status: "IN_PROGRESS" },
+    select: { id: true },
+  });
+  if (!attempt) return { success: false, error: "Intento no válido" };
+
+  const usage = await prisma.examAidUsage.upsert({
+    where: {
+      attemptId_questionId_aidKey: { attemptId, questionId, aidKey },
+    },
+    create: { attemptId, questionId, aidKey },
+    update: {}, // idempotente
+    select: { id: true, attemptId: true, questionId: true, aidKey: true, createdAt: true },
+  });
+
+  return { success: true, usage };
 }

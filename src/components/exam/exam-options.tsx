@@ -4,6 +4,8 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { cn } from "@/lib/utils";
 
 type Option = {
@@ -98,7 +100,8 @@ export function ExamOptions({
                   {isRich ? (
                     <div className={cn("mt-2", isTable && "overflow-x-auto")}>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
                         components={{
                           // Párrafos estándar como bloques cuando hay contenido rico
                           p: ({ children }) => <p className="leading-relaxed">{children}</p>,
@@ -132,7 +135,8 @@ export function ExamOptions({
                   ) : (
                     // Para texto simple, renderizamos Markdown en línea (p => span)
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
                       components={{
                         p: ({ children }) => <span className="ml-1 inline leading-relaxed">{children}</span>,
                         strong: ({ children }) => <strong className="ml-1 inline font-semibold">{children}</strong>,

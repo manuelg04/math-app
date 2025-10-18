@@ -18,9 +18,7 @@ function getAcademicProgramName(program: string): string {
 export function DashboardClient({ initialData }: { initialData: DashboardData }) {
   const { user, joinedDate, loading, handleLogout } = useDashboardViewModel(initialData);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <main className="min-h-screen bg-secondary px-6 py-10 text-foreground lg:px-16">
@@ -61,6 +59,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
       <section className="mt-12">
         <h2 className="text-2xl font-bold text-foreground">Exámenes Disponibles</h2>
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          {/* Tarjeta existente */}
           <Link
             href="/dashboard/exams/saberpro_exam"
             className="group block rounded-2xl border border-border bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md"
@@ -76,9 +75,26 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
               <span>⏱️ 45-60 minutos</span>
               <span>📝 Selección múltiple</span>
             </div>
-            <Button className="mt-4 w-full">
-              Iniciar Examen
-            </Button>
+            <Button className="mt-4 w-full">Iniciar Examen</Button>
+          </Link>
+
+          {/* NUEVA tarjeta: Prueba General */}
+          <Link
+            href="/dashboard/exams/prueba_general"
+            className="group block rounded-2xl border border-border bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md"
+          >
+            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
+              Prueba General
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Evaluación completa con ayudas opcionales por pregunta y límite de 90 minutos.
+            </p>
+            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+              <span>📊 60 preguntas</span>
+              <span>⏱️ 90 minutos</span>
+              <span>📝 Selección múltiple</span>
+            </div>
+            <Button className="mt-4 w-full">Iniciar Examen</Button>
           </Link>
         </div>
       </section>

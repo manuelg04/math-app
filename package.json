@@ -24,12 +24,15 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "tailwind-merge": "^3.3.1",
     "turndown": "^7.2.1",
     "turndown-plugin-gfm": "^1.0.2",
-    "uuid": "^11.0.5"
+    "uuid": "^11.0.5",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

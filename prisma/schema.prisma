@@ -13,6 +13,12 @@ enum Role {
   TEACHER
 }
 
+enum AidKey {
+  AID1
+  AID2
+  AI_ASSIST
+}
+
 model User {
   id                 String   @id @default(uuid()) @map("id")
   email              String   @unique @map("email")
@@ -33,6 +39,7 @@ model User {
   @@map("users")
   @@index([email])
 }
+
 model Exam {
   id          String    @id @default(uuid()) @map("id")
   slug        String    @unique @map("slug")
@@ -51,33 +58,36 @@ model Exam {
 }
 
 model Question {
-  id           String   @id @default(uuid()) @map("id")
-  examId       String   @map("exam_id")
-  orderIndex   Int      @map("order_index")
-  code         String?  @map("code")
-  prompt       String   @map("prompt_md")
-  competency   String?  @map("competency")
-  evidence     String?  @map("evidence")
-  contentArea  String?  @map("content_area")
-  context      String?  @map("context")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid()) @map("id")
+  examId        String   @map("exam_id")
+  orderIndex    Int      @map("order_index")
+  code          String?  @map("code")
+  prompt        String   @map("prompt_md")
+  competency    String?  @map("competency")
+  evidence      String?  @map("evidence")
+  contentArea   String?  @map("content_area")
+  context       String?  @map("context")
+  help1Md       String?  @map("help1_md")
+  help2Md       String?  @map("help2_md")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   exam           Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
   choices        Option[]
   examResponses  ExamResponse[]
+  aidUsages      ExamAidUsage[]
 
   @@unique([examId, orderIndex])
   @@map("questions")
   @@index([examId])
 }
 
-
 model Option {
   id          String   @id @default(uuid()) @map("id")
   questionId  String   @map("question_id")
   label       String   @map("label")
-  text        String   @map("text")
+  text        String?  @map("text")
+  imageUrl    String?  @map("image_url")
   isCorrect   Boolean  @default(false) @map("is_correct")
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -110,6 +120,7 @@ model ExamAttempt {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam          Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
   responses     ExamResponse[]
+  aidUsages     ExamAidUsage[]
 
   @@map("exam_attempts")
   @@index([userId])
@@ -124,14 +135,35 @@ model ExamResponse {
   selectedOptionId String?   @map("selected_option_id")
   answeredAt       DateTime  @default(now()) @map("answered_at")
   isCorrect        Boolean?  @map("is_correct")
+  timeSpentMs      Int?      @map("time_spent_ms")
+  usedAid1         Boolean   @default(false) @map("used_aid_1")
+  usedAid2         Boolean   @default(false) @map("used_aid_2")
+  usedAidAi        Boolean   @default(false) @map("used_aid_ai") // NUEVO: ayuda IA
   createdAt        DateTime  @default(now()) @map("created_at")
 
   attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  selectedOption Option?     @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
+  selectedOption Option?     @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
 
   @@unique([attemptId, questionId])
   @@map("exam_responses")
+  @@index([attemptId])
+  @@index([questionId])
+  @@index([selectedOptionId])
+}
+
+model ExamAidUsage {
+  id         String   @id @default(uuid()) @map("id")
+  attemptId  String   @map("attempt_id")
+  questionId String   @map("question_id")
+  aidKey     AidKey   @map("aid_key")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId, aidKey])
+  @@map("exam_aid_usages")
   @@index([attemptId])
   @@index([questionId])
 }

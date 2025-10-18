@@ -8,19 +8,14 @@ export async function POST(request: Request) {
     if (!authToken) {
       return NextResponse.json({ success: false, message: "No autenticado" }, { status: 401 });
     }
-
-    const body = await request.json();
-    const examId = String(body?.examId ?? "");
-
+    const { examId } = await request.json();
     if (!examId) {
       return NextResponse.json({ success: false, message: "examId requerido" }, { status: 400 });
     }
-
-    const result = await startExamAttempt(authToken.sub, examId);
-
+    const result = await startExamAttempt(authToken.sub, String(examId));
     return NextResponse.json(result);
-  } catch (error) {
-    console.error("Error al iniciar intento:", error);
+  } catch (err) {
+    console.error("Error al iniciar intento:", err);
     return NextResponse.json({ success: false, message: "Error interno" }, { status: 500 });
   }
 }

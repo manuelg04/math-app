@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Work_Sans } from "next/font/google";
 import { ToastProvider } from "@/hooks/use-toast";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 
 const workSans = Work_Sans({
   subsets: ["latin"],

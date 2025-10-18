@@ -12,6 +12,7 @@ type ExamNavigationProps = {
   canGoNext: boolean;
   isLastQuestion: boolean;
   hasAnswered: boolean;
+  disabled?: boolean; // bloquea todo (por tiempo agotado)
 };
 
 export function ExamNavigation({
@@ -23,13 +24,14 @@ export function ExamNavigation({
   canGoNext,
   isLastQuestion,
   hasAnswered,
+  disabled = false,
 }: ExamNavigationProps) {
   return (
-    <div className="flex items-center justify-between border-t border-border bg-white px-6 py-4">
+    <div className="flex items-center justify-between px-6 py-4">
       <Button
         variant="secondary"
         onClick={onPrevious}
-        disabled={!canGoBack}
+        disabled={disabled || !canGoBack}
         className="gap-2"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -42,7 +44,7 @@ export function ExamNavigation({
 
       <Button
         onClick={onNext}
-        disabled={!canGoNext || (!hasAnswered && !isLastQuestion)}
+        disabled={disabled || !canGoNext || (!hasAnswered && !isLastQuestion)}
         className="gap-2"
       >
         {isLastQuestion ? "Finalizar" : "Siguiente"}

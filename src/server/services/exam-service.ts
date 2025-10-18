@@ -14,10 +14,13 @@ export type ExamWithQuestions = {
     evidence: string | null;
     contentArea: string | null;
     context: string | null;
+    help1Md: string | null;
+    help2Md: string | null;
     choices: Array<{
       id: string;
       label: string;
       text: string;
+      imageUrl: string | null;
     }>;
   }>;
 };
@@ -43,11 +46,14 @@ export async function getExamBySlug(
           evidence: true,
           contentArea: true,
           context: true,
+          help1Md: true,
+          help2Md: true,
           choices: {
             select: {
               id: true,
               label: true,
               text: true,
+              imageUrl: true,
             },
             orderBy: { label: "asc" },
           },
@@ -60,11 +66,11 @@ export async function getExamBySlug(
     return { success: false, error: "Examen no encontrado" };
   }
 
-  return { success: true, exam };
+  return { success: true, exam: exam as ExamWithQuestions };
 }
 
 export async function getUserExamAttempts(userId: string, examId: string) {
-  const attempts = await prisma.examAttempt.findMany({
+  return prisma.examAttempt.findMany({
     where: { userId, examId },
     orderBy: { startedAt: "desc" },
     select: {
@@ -76,6 +82,21 @@ export async function getUserExamAttempts(userId: string, examId: string) {
       status: true,
     },
   });
+}
 
-  return attempts;
+// (opcional) listado de exámenes activos
+export async function listActiveExams() {
+  return prisma.exam.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      description: true,
+      version: true,
+      isActive: true,
+      createdAt: true,
+    },
+  });
 }
