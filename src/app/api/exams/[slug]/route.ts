@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { getExamBySlug, getUserExamAttempts } from "@/server/services/exam-service";
 import { readAuthToken } from "@/lib/auth";
 
-export async function GET(_req: Request, { params }: { params: { slug: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const authToken = await readAuthToken();
     if (!authToken) {
       return NextResponse.json({ success: false, message: "No autenticado" }, { status: 401 });
     }
 
-    const { slug } = params;
+    const { slug } = await params;
     const result = await getExamBySlug(slug);
     if (!result.success) {
       return NextResponse.json({ success: false, message: result.error }, { status: 404 });

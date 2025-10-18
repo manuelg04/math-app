@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { saveAnswer } from "@/server/services/exam-attempt-service";
 import { readAuthToken } from "@/lib/auth";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authToken = await readAuthToken();
     if (!authToken) {
       return NextResponse.json({ success: false, message: "No autenticado" }, { status: 401 });
     }
-    const attemptId = params.id;
+    const { id: attemptId } = await params;
     const body = await request.json();
     const questionId = String(body?.questionId ?? "");
     const selectedOptionId = String(body?.selectedOptionId ?? "");

@@ -42,23 +42,26 @@ function useLockViewportScroll() {
     const html = document.documentElement;
     const body = document.body;
 
+    // Type assertion for CSS properties not in TypeScript's CSSStyleDeclaration
+    type CSSStyleWithOverscroll = CSSStyleDeclaration & { overscrollBehaviorY: string };
+
     const prevHtmlOverflow = html.style.overflow;
-    const prevHtmlOverscroll = (html.style as any).overscrollBehaviorY || "";
+    const prevHtmlOverscroll = (html.style as CSSStyleWithOverscroll).overscrollBehaviorY || "";
     const prevBodyOverflow = body.style.overflow;
-    const prevBodyOverscroll = (body.style as any).overscrollBehaviorY || "";
+    const prevBodyOverscroll = (body.style as CSSStyleWithOverscroll).overscrollBehaviorY || "";
     const prevBodyTouchAction = body.style.touchAction;
 
     html.style.overflow = "hidden";
-    (html.style as any).overscrollBehaviorY = "none";
+    (html.style as CSSStyleWithOverscroll).overscrollBehaviorY = "none";
     body.style.overflow = "hidden";
-    (body.style as any).overscrollBehaviorY = "none";
+    (body.style as CSSStyleWithOverscroll).overscrollBehaviorY = "none";
     body.style.touchAction = "manipulation";
 
     return () => {
       html.style.overflow = prevHtmlOverflow;
-      (html.style as any).overscrollBehaviorY = prevHtmlOverscroll;
+      (html.style as CSSStyleWithOverscroll).overscrollBehaviorY = prevHtmlOverscroll;
       body.style.overflow = prevBodyOverflow;
-      (body.style as any).overscrollBehaviorY = prevBodyOverscroll;
+      (body.style as CSSStyleWithOverscroll).overscrollBehaviorY = prevBodyOverscroll;
       body.style.touchAction = prevBodyTouchAction;
     };
   }, []);
