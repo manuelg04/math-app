@@ -33,7 +33,7 @@ export default async function ExamResultsPage({
   }
 
   const { attempt } = result;
-  const totalQuestions = attempt.responses.length;
+  const totalQuestions = attempt.exam.questions.length;
   const correctAnswers = attempt.responses.filter((r) => r.isCorrect === true).length;
   const incorrectAnswers = totalQuestions - correctAnswers;
   const score = attempt.score || 0;

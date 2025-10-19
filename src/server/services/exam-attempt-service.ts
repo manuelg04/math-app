@@ -19,6 +19,16 @@ export async function getExamAttemptById(attemptId: string, userId: string) {
       timeSpent: true,
       score: true,
       status: true,
+      exam: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          questions: {
+            select: { id: true },
+          },
+        },
+      },
       responses: {
         select: { id: true, questionId: true, selectedOptionId: true, isCorrect: true },
       },
@@ -62,36 +72,61 @@ export async function saveAnswer(
 }
 
 export async function submitExamAttempt(attemptId: string, userId: string, timeSpent: number) {
-  const attempt = await prisma.examAttempt.findFirst({
-    where: { id: attemptId, userId, status: "IN_PROGRESS" },
-    include: { responses: true, exam: { include: { questions: true } } },
-  });
-  if (!attempt) return { success: false, error: "Intento no válido" };
+  try {
+    console.log("[submitExamAttempt] Buscando intento:", { attemptId, userId });
 
-  const totalQuestions = attempt.exam.questions.length;
-  const correctAnswers = attempt.responses.filter((r) => r.isCorrect === true).length;
-  const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+    const attempt = await prisma.examAttempt.findFirst({
+      where: { id: attemptId, userId, status: "IN_PROGRESS" },
+      include: { responses: true, exam: { include: { questions: true } } },
+    });
 
-  const updatedAttempt = await prisma.examAttempt.update({
-    where: { id: attemptId },
-    data: {
-      status: "SUBMITTED",
-      submittedAt: new Date(),
-      timeSpent,
-      score,
-    },
-    select: { id: true, submittedAt: true, timeSpent: true, score: true, status: true },
-  });
+    if (!attempt) {
+      console.error("[submitExamAttempt] Intento no encontrado o ya submitido");
+      return { success: false, error: "Intento no válido" };
+    }
 
-  return {
-    success: true,
-    attempt: updatedAttempt,
-    details: {
-      totalQuestions,
-      correctAnswers,
-      incorrectAnswers: totalQuestions - correctAnswers,
-    },
-  };
+    console.log("[submitExamAttempt] Intento encontrado:", {
+      id: attempt.id,
+      status: attempt.status,
+      responsesCount: attempt.responses.length,
+      questionsCount: attempt.exam.questions.length
+    });
+
+    const totalQuestions = attempt.exam.questions.length;
+    const correctAnswers = attempt.responses.filter((r) => r.isCorrect === true).length;
+    const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+
+    console.log("[submitExamAttempt] Calculando score:", { totalQuestions, correctAnswers, score });
+
+    const updatedAttempt = await prisma.examAttempt.update({
+      where: { id: attemptId },
+      data: {
+        status: "SUBMITTED",
+        submittedAt: new Date(),
+        timeSpent,
+        score,
+      },
+      select: { id: true, submittedAt: true, timeSpent: true, score: true, status: true },
+    });
+
+    console.log("[submitExamAttempt] Intento actualizado exitosamente");
+
+    return {
+      success: true,
+      attempt: updatedAttempt,
+      details: {
+        totalQuestions,
+        correctAnswers,
+        incorrectAnswers: totalQuestions - correctAnswers,
+      },
+    };
+  } catch (error) {
+    console.error("[submitExamAttempt] Error crítico:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al enviar examen"
+    };
+  }
 }
 
 /**

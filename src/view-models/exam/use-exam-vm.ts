@@ -184,25 +184,43 @@ export function useExamViewModel(examData: ExamData) {
 
   // Envío
   const handleSubmit = async () => {
-    if (!attemptId || isSubmitting) return;
+    if (!attemptId || isSubmitting) {
+      console.log("[handleSubmit] Bloqueado:", { attemptId, isSubmitting });
+      return;
+    }
+
+    console.log("[handleSubmit] Iniciando envío:", { attemptId, timeSpent });
     setIsSubmitting(true);
     setLoading(true);
+
     try {
       const resp = await fetch(`/api/exams/attempts/${attemptId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timeSpent }),
       });
+
+      console.log("[handleSubmit] Respuesta recibida:", resp.status);
+
+      if (!resp.ok) {
+        console.error("[handleSubmit] HTTP error:", resp.status, resp.statusText);
+        alert("Error al enviar el examen. Intenta de nuevo.");
+        return;
+      }
+
       const result = await resp.json();
+      console.log("[handleSubmit] Resultado parseado:", result);
+
       if (result.success) {
+        console.log("[handleSubmit] Éxito, navegando a resultados");
         localStorage.removeItem(storageKey);
         router.push(`/dashboard/exams/${examData.slug}/results/${attemptId}`);
       } else {
-        console.error("Error al enviar examen:", result.message);
-        alert("Error al enviar el examen. Intenta de nuevo.");
+        console.error("[handleSubmit] Fallo del servidor:", result.message || result.error);
+        alert(`Error al enviar el examen: ${result.message || result.error || "Intenta de nuevo."}`);
       }
     } catch (err) {
-      console.error("Error al enviar examen:", err);
+      console.error("[handleSubmit] Excepción:", err);
       alert("Error al enviar el examen. Intenta de nuevo.");
     } finally {
       setLoading(false);
