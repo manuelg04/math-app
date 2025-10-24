@@ -24,6 +24,7 @@ type Question = {
     id: string;
     label: string;
     text: string;
+    imageUrl?: string | null;
   }>;
 };
 

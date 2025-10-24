@@ -12,6 +12,7 @@ type Option = {
   id: string;
   label: string;
   text: string;
+  imageUrl?: string | null;
 };
 
 type ExamOptionsProps = {
@@ -97,7 +98,29 @@ export function ExamOptions({
                   <span className="font-semibold text-primary">{option.label}.</span>
 
                   {/* Contenido de la opción */}
-                  {isRich ? (
+                  {option.imageUrl ? (
+                    // Si hay imageUrl, renderizar la imagen
+                    <div className="mt-2">
+                      <img
+                        src={option.imageUrl}
+                        alt={`Opción ${option.label}`}
+                        className="my-2 mx-auto max-h-64 w-auto rounded-md"
+                        loading="lazy"
+                      />
+                      {/* Si además hay texto, mostrarlo */}
+                      {option.text?.trim() && (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={{
+                            p: ({ children }) => <p className="mt-2 leading-relaxed">{children}</p>,
+                          }}
+                        >
+                          {option.text.trim()}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                  ) : isRich ? (
                     <div className={cn("mt-2", isTable && "overflow-x-auto")}>
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
