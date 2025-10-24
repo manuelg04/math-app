@@ -24,6 +24,8 @@ if (typeof globalThis.crypto === "undefined" || !globalThis.crypto?.subtle) {
 }
 
 const subtleCryptoPromise: Promise<SubtleCrypto> = Promise.resolve(globalThis.crypto.subtle);
+let cachedSecret: string | null = null;
+let cachedKeyPromise: Promise<CryptoKey> | null = null;
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
   if (typeof Buffer !== "undefined") {
@@ -61,15 +63,26 @@ function base64UrlDecode(value: string): Uint8Array {
   return bytes;
 }
 
+async function getHmacKey(secret: string): Promise<CryptoKey> {
+  if (cachedSecret === secret && cachedKeyPromise) {
+    return cachedKeyPromise;
+  }
+  cachedSecret = secret;
+  cachedKeyPromise = subtleCryptoPromise.then((subtle) =>
+    subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    ),
+  );
+  return cachedKeyPromise;
+}
+
 async function hmacSha256(data: string, secret: string): Promise<Uint8Array> {
   const subtle = await subtleCryptoPromise;
-  const key = await subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await getHmacKey(secret);
   const signature = await subtle.sign("HMAC", key, encoder.encode(data));
   return new Uint8Array(signature);
 }

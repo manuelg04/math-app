@@ -1,6 +1,6 @@
+import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { readAuthToken } from "@/lib/auth";
-import { nanoid } from "nanoid";
 
 export async function POST(request: Request) {
   try {
@@ -33,18 +33,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // For now, we'll return a placeholder URL
-    // In production, you would upload to a cloud storage service like AWS S3, Cloudinary, etc.
-    const fileName = `${token.sub}-${nanoid()}.${file.name.split('.').pop()}`;
-    const url = `/uploads/${fileName}`;
-
-    // In a real app, you would save to cloud storage here
-    // For demo purposes, we'll just return a simulated URL
+    const arrayBuffer = await file.arrayBuffer();
+    const mimeType = file.type || "image/png";
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return NextResponse.json({
       success: true,
       message: "Imagen subida correctamente",
-      url: url,
+      url: dataUrl,
     });
   } catch (error) {
     console.error("Error subiendo imagen", error);

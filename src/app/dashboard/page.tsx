@@ -32,6 +32,24 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
+  // Check for active exam attempt
+  const activeAttempt = await prisma.examAttempt.findFirst({
+    where: {
+      userId: token.sub,
+      status: "IN_PROGRESS",
+    },
+    include: {
+      exam: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+        },
+      },
+    },
+    orderBy: { startedAt: "desc" },
+  });
+
   const joinedDate = new Intl.DateTimeFormat("es", {
     day: "2-digit",
     month: "long",
@@ -43,6 +61,13 @@ export default async function DashboardPage() {
       initialData={{
         user,
         joinedDate,
+        activeExam: activeAttempt
+          ? {
+              examId: activeAttempt.exam.id,
+              examSlug: activeAttempt.exam.slug,
+              examTitle: activeAttempt.exam.title,
+            }
+          : null,
       }}
     />
   );

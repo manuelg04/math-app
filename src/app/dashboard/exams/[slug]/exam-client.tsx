@@ -33,6 +33,7 @@ type ExamData = {
   slug: string;
   title: string;
   description: string | null;
+  durationMinutes: number;
   questions: Question[];
 };
 

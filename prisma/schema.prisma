@@ -41,14 +41,15 @@ model User {
 }
 
 model Exam {
-  id          String    @id @default(uuid()) @map("id")
-  slug        String    @unique @map("slug")
-  title       String    @map("title")
-  description String?   @map("description")
-  version     Int       @default(1) @map("version")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @map("id")
+  slug            String    @unique @map("slug")
+  title           String    @map("title")
+  description     String?   @map("description")
+  durationMinutes Int       @default(90) @map("duration_minutes")
+  version         Int       @default(1) @map("version")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   questions      Question[]
   examAttempts   ExamAttempt[]

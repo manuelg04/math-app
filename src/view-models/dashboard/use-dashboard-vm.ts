@@ -15,6 +15,11 @@ export type DashboardData = {
     profilePhoto: string | null;
   } | null;
   joinedDate: string;
+  activeExam: {
+    examId: string;
+    examSlug: string;
+    examTitle: string;
+  } | null;
 };
 
 export function useDashboardViewModel(initialData: DashboardData) {
@@ -41,6 +46,7 @@ export function useDashboardViewModel(initialData: DashboardData) {
   return {
     user: initialData.user,
     joinedDate: initialData.joinedDate,
+    activeExam: initialData.activeExam,
     loading,
     handleLogout,
   };

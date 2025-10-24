@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ interface OnboardingFormProps {
 }
 
 export function OnboardingForm({ initialData }: OnboardingFormProps) {
+  const router = useRouter();
   const {
     form,
     loading,
@@ -29,11 +31,24 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
   } = useOnboardingViewModel(initialData);
 
   const [previewUrl, setPreviewUrl] = useState<string>(initialData.profilePhoto || "");
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
       const url = URL.createObjectURL(file);
+      objectUrlRef.current = url;
       setPreviewUrl(url);
       handleFileChange(file);
     }
@@ -62,7 +77,10 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
           </div>
           <Button
             type="button"
-            onClick={() => window.location.href = `/onboarding/test-placeholder/${form.testType}`}
+            onClick={() => {
+              if (!form.testType) return;
+              router.push(`/onboarding/test-placeholder/${form.testType}`);
+            }}
             disabled={!form.testType || loading}
             className="mt-6 w-full"
           >
@@ -89,6 +107,7 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
                   alt="Foto de perfil"
                   fill
                   className="object-cover"
+                  unoptimized={previewUrl.startsWith("data:")}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground">

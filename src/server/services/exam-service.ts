@@ -5,6 +5,7 @@ export type ExamWithQuestions = {
   slug: string;
   title: string;
   description: string | null;
+  durationMinutes: number;
   questions: Array<{
     id: string;
     orderIndex: number;
@@ -35,6 +36,7 @@ export async function getExamBySlug(
       slug: true,
       title: true,
       description: true,
+      durationMinutes: true,
       questions: {
         orderBy: { orderIndex: "asc" },
         select: {
@@ -99,4 +101,28 @@ export async function listActiveExams() {
       createdAt: true,
     },
   });
+}
+
+// Verificar si el usuario tiene un examen activo diferente al especificado
+export async function checkActiveExam(userId: string, excludeExamId?: string) {
+  const activeAttempt = await prisma.examAttempt.findFirst({
+    where: {
+      userId,
+      status: "IN_PROGRESS",
+      ...(excludeExamId ? { examId: { not: excludeExamId } } : {}),
+    },
+    include: {
+      exam: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          durationMinutes: true,
+        },
+      },
+    },
+    orderBy: { startedAt: "desc" },
+  });
+
+  return activeAttempt;
 }

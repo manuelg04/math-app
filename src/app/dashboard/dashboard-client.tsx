@@ -15,8 +15,33 @@ function getAcademicProgramName(program: string): string {
   return programs[program] || program;
 }
 
+type ExamCard = {
+  slug: string;
+  title: string;
+  description: string;
+  questionCount: string;
+  duration: string;
+};
+
+const AVAILABLE_EXAMS: ExamCard[] = [
+  {
+    slug: "saberpro_exam",
+    title: "Prueba de Entrada – Salida",
+    description: "Prueba diagnóstica de 35 preguntas para evaluar competencias en razonamiento cuantitativo.",
+    questionCount: "35 preguntas",
+    duration: "60 minutos",
+  },
+  {
+    slug: "prueba_general",
+    title: "Prueba General",
+    description: "Evaluación completa con ayudas opcionales por pregunta y límite de 90 minutos.",
+    questionCount: "60 preguntas",
+    duration: "90 minutos",
+  },
+];
+
 export function DashboardClient({ initialData }: { initialData: DashboardData }) {
-  const { user, joinedDate, loading, handleLogout } = useDashboardViewModel(initialData);
+  const { user, joinedDate, activeExam, loading, handleLogout } = useDashboardViewModel(initialData);
 
   if (!user) return null;
 
@@ -58,44 +83,62 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
 
       <section className="mt-12">
         <h2 className="text-2xl font-bold text-foreground">Exámenes Disponibles</h2>
+        {activeExam && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <p className="font-medium text-amber-900">
+              Tienes un examen en progreso: <span className="font-bold">{activeExam.examTitle}</span>
+            </p>
+            <p className="mt-1 text-amber-700">
+              Continúa con tu examen activo o finalízalo antes de iniciar uno nuevo.
+            </p>
+          </div>
+        )}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          {/* Tarjeta existente */}
-          <Link
-            href="/dashboard/exams/saberpro_exam"
-            className="group block rounded-2xl border border-border bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md"
-          >
-            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
-              Prueba de Entrada – Salida
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Prueba diagnóstica de 35 preguntas para evaluar competencias en razonamiento cuantitativo.
-            </p>
-            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-              <span>📊 35 preguntas</span>
-              <span>⏱️ 45-60 minutos</span>
-              <span>📝 Selección múltiple</span>
-            </div>
-            <Button className="mt-4 w-full">Iniciar Examen</Button>
-          </Link>
+          {AVAILABLE_EXAMS.map((exam) => {
+            const isActive = activeExam?.examSlug === exam.slug;
+            const isDisabled = activeExam && !isActive;
 
-          {/* NUEVA tarjeta: Prueba General */}
-          <Link
-            href="/dashboard/exams/prueba_general"
-            className="group block rounded-2xl border border-border bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md"
-          >
-            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
-              Prueba General
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Evaluación completa con ayudas opcionales por pregunta y límite de 90 minutos.
-            </p>
-            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-              <span>📊 60 preguntas</span>
-              <span>⏱️ 90 minutos</span>
-              <span>📝 Selección múltiple</span>
-            </div>
-            <Button className="mt-4 w-full">Iniciar Examen</Button>
-          </Link>
+            return (
+              <div
+                key={exam.slug}
+                className={`rounded-2xl border bg-white p-6 shadow-sm transition-all ${
+                  isDisabled
+                    ? "border-border opacity-60"
+                    : "border-border hover:border-primary hover:shadow-md"
+                }`}
+              >
+                <h3
+                  className={`text-lg font-semibold ${
+                    isDisabled ? "text-muted-foreground" : "text-foreground"
+                  }`}
+                >
+                  {exam.title}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">{exam.description}</p>
+                <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>📊 {exam.questionCount}</span>
+                  <span>⏱️ {exam.duration}</span>
+                  <span>📝 Selección múltiple</span>
+                </div>
+
+                {isActive ? (
+                  <Link href={`/dashboard/exams/${exam.slug}`} className="mt-4 block">
+                    <Button className="w-full" variant="primary">
+                      Continuar Examen
+                    </Button>
+                  </Link>
+                ) : isDisabled ? (
+                  <Button className="mt-4 w-full" disabled variant="secondary">
+                    Finaliza tu examen activo primero
+                  </Button>
+                ) : (
+                  <Link href={`/dashboard/exams/${exam.slug}`} className="mt-4 block">
+                    <Button className="w-full">Iniciar Examen</Button>
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
     </main>
