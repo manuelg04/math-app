@@ -36,6 +36,8 @@ type ExamData = {
 
 type ExamAnswer = { questionId: string; selectedOptionId: string };
 
+type AidKey = "AID1" | "AID2" | "AI_ASSIST";
+
 type LocalStorageData = {
   attemptId: string;
   answers: ExamAnswer[];
@@ -45,29 +47,34 @@ type LocalStorageData = {
   loggedAids?: Record<string, AidKey[]>;
 };
 
-type AidKey = "AID1" | "AID2" | "AI_ASSIST";
-
 export function useExamViewModel(examData: ExamData) {
-  const MAX_SECONDS = examData.durationMinutes * 60;
+  const MAX_SECONDS = React.useMemo(() => examData.durationMinutes * 60, [examData.durationMinutes]);
+
   const router = useRouter();
+  const { toast } = useToast();
+
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [answers, setAnswers] = React.useState<Map<string, string>>(new Map());
   const [attemptId, setAttemptId] = React.useState<string | null>(null);
+
   const timeSpentRef = React.useRef(0);
   const [timeSnapshot, setTimeSnapshot] = React.useState(0);
   const [timeOver, setTimeOver] = React.useState(false);
+
   const [loading, setLoading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const { toast } = useToast();
 
-  // Ayudas visibles por pregunta y registro de ayudas ya notificadas al backend
+  // ayudas visibles por pregunta y registro de ayudas notificadas
   const [visibleAids, setVisibleAids] = React.useState<Record<string, Set<AidKey>>>({});
   const [loggedAids, setLoggedAids] = React.useState<Record<string, Set<AidKey>>>({});
 
   const storageKey = `exam_${examData.slug}`;
   const persistTimeoutRef = React.useRef<number | null>(null);
 
-  // Cargar de localStorage
+  // Control de peticiones de respuesta por pregunta (evitar carreras)
+  const answerControllersRef = React.useRef<Record<string, AbortController | null>>({});
+
+  // Cargar de localStorage (solo una vez)
   const [initialLoadDone, setInitialLoadDone] = React.useState(false);
 
   React.useEffect(() => {
@@ -75,9 +82,11 @@ export function useExamViewModel(examData: ExamData) {
     if (saved) {
       try {
         const data: LocalStorageData = JSON.parse(saved);
+
         if (data.attemptId) {
           setAttemptId(data.attemptId);
         }
+
         if (typeof data.timeSpent === "number" && Number.isFinite(data.timeSpent)) {
           timeSpentRef.current = data.timeSpent;
           setTimeSnapshot(data.timeSpent);
@@ -85,11 +94,15 @@ export function useExamViewModel(examData: ExamData) {
             setTimeOver(true);
           }
         }
+
         if (Array.isArray(data.answers)) {
           const answersMap = new Map<string, string>();
-          for (const a of data.answers) answersMap.set(a.questionId, a.selectedOptionId);
+          for (const a of data.answers) {
+            answersMap.set(a.questionId, a.selectedOptionId);
+          }
           setAnswers(answersMap);
         }
+
         if (typeof data.currentIndex === "number" && examData.questions.length > 0) {
           const safeIndex = Math.min(
             Math.max(Math.floor(data.currentIndex), 0),
@@ -97,6 +110,7 @@ export function useExamViewModel(examData: ExamData) {
           );
           setCurrentIndex(safeIndex);
         }
+
         if (data.visibleAids) {
           const entries = Object.entries(data.visibleAids).map(([questionId, aids]) => [
             questionId,
@@ -116,18 +130,22 @@ export function useExamViewModel(examData: ExamData) {
       }
     }
     setInitialLoadDone(true);
-  }, [storageKey, examData.questions.length]);
+  }, [storageKey, examData.questions.length, MAX_SECONDS]);
+
+  // Serialización para localStorage
+  const serializeAidState = React.useCallback(
+    (state: Record<string, Set<AidKey>>): Record<string, AidKey[]> => {
+      const result: Record<string, AidKey[]> = {};
+      for (const [questionId, aids] of Object.entries(state)) {
+        if (aids.size === 0) continue;
+        result[questionId] = Array.from(aids);
+      }
+      return result;
+    },
+    []
+  );
 
   // Guardar en localStorage
-  const serializeAidState = React.useCallback((state: Record<string, Set<AidKey>>): Record<string, AidKey[]> => {
-    const result: Record<string, AidKey[]> = {};
-    for (const [questionId, aids] of Object.entries(state)) {
-      if (aids.size === 0) continue;
-      result[questionId] = Array.from(aids);
-    }
-    return result;
-  }, []);
-
   const persistExamState = React.useCallback(() => {
     if (!attemptId) return;
     const data: LocalStorageData = {
@@ -148,6 +166,7 @@ export function useExamViewModel(examData: ExamData) {
     }
   }, [answers, attemptId, currentIndex, loggedAids, serializeAidState, storageKey, visibleAids]);
 
+  // Persistir con debounce cuando cambia el snapshot de tiempo o el estado dependiente
   React.useEffect(() => {
     if (!attemptId) return;
     if (persistTimeoutRef.current) {
@@ -157,7 +176,6 @@ export function useExamViewModel(examData: ExamData) {
       persistExamState();
       persistTimeoutRef.current = null;
     }, 700);
-
     return () => {
       if (persistTimeoutRef.current) {
         window.clearTimeout(persistTimeoutRef.current);
@@ -166,6 +184,7 @@ export function useExamViewModel(examData: ExamData) {
     };
   }, [persistExamState, attemptId, timeSnapshot]);
 
+  // Persistir al desmontar
   React.useEffect(() => {
     return () => {
       if (persistTimeoutRef.current) {
@@ -176,14 +195,29 @@ export function useExamViewModel(examData: ExamData) {
     };
   }, [persistExamState]);
 
-  // Iniciar intento (solo si no hay attemptId guardado en localStorage)
+  // Persistir también en beforeunload/pagehide (cierre o navegación abrupta)
   React.useEffect(() => {
-    // Esperar a que se complete la carga inicial de localStorage
+    const handler = () => {
+      try {
+        persistExamState();
+      } catch {
+        // ignorar
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    window.addEventListener("pagehide", handler);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+      window.removeEventListener("pagehide", handler);
+    };
+  }, [persistExamState]);
+
+  // Iniciar intento (solo una vez completada la carga inicial)
+  React.useEffect(() => {
     if (!initialLoadDone) return;
 
-    // Si ya hay attemptId (cargado de localStorage o creado), validar que pertenezca a este examen
     if (attemptId) {
-      // Verificar en el servidor que este attemptId sea válido para este examen
+      // Validar attemptId
       (async () => {
         try {
           const resp = await fetch(`/api/exams/attempts/${attemptId}/validate`, {
@@ -191,16 +225,13 @@ export function useExamViewModel(examData: ExamData) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ examId: examData.id }),
           });
-
           if (!resp.ok) {
-            // El attemptId no es válido para este examen, limpiarlo
             console.warn("attemptId inválido para este examen, limpiando...");
             setAttemptId(null);
             localStorage.removeItem(storageKey);
           }
         } catch (err) {
           console.error("Error al validar attemptId:", err);
-          // En caso de error, limpiar por seguridad
           setAttemptId(null);
           localStorage.removeItem(storageKey);
         }
@@ -208,7 +239,7 @@ export function useExamViewModel(examData: ExamData) {
       return;
     }
 
-    // No hay attemptId, intentar crear uno nuevo
+    // Crear attempt si no existe
     (async () => {
       try {
         const resp = await fetch("/api/exams/attempts/start", {
@@ -222,9 +253,8 @@ export function useExamViewModel(examData: ExamData) {
           setAttemptId(result.attempt.id);
         } else {
           console.error("Error al iniciar intento:", result.message);
-
-          // Si hay examen activo (409), redirigir al dashboard
           if (resp.status === 409) {
+            // Examen activo existente
             toast({
               variant: "error",
               description: "Ya tienes un examen en progreso. Redirigiéndote al dashboard...",
@@ -247,73 +277,113 @@ export function useExamViewModel(examData: ExamData) {
     })();
   }, [initialLoadDone, attemptId, examData.id, toast, router, storageKey]);
 
+  // Pregunta y selección actual (normalizada a null)
   const currentQuestion = examData.questions[currentIndex];
-  const selectedOptionId = currentQuestion ? answers.get(currentQuestion.id) : null;
+  const selectedOptionId: string | null = React.useMemo(() => {
+    if (!currentQuestion) return null;
+    return answers.get(currentQuestion.id) ?? null;
+  }, [answers, currentQuestion]);
 
-  // Selección de opción
-  const handleSelectOption = async (optionId: string) => {
-    if (!currentQuestion || !attemptId) return;
+  // Seleccionar opción (optimista + control de concurrencia)
+  const handleSelectOption = React.useCallback(
+    async (optionId: string) => {
+      if (!currentQuestion || !attemptId || timeOver) return;
 
-    const previousOption = answers.get(currentQuestion.id) ?? null;
-    setAnswers((prev) => {
-      const updated = new Map(prev);
-      updated.set(currentQuestion.id, optionId);
-      return updated;
-    });
+      const questionId = currentQuestion.id;
+      const previousOption = answers.get(questionId) ?? null;
 
-    try {
-      const resp = await fetch(`/api/exams/attempts/${attemptId}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId: currentQuestion.id,
-          selectedOptionId: optionId,
-        }),
-      });
+      // No-op si es la misma opción
+      if (previousOption === optionId) return;
 
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => null);
-        throw new Error(data?.message ?? "No se pudo guardar la respuesta");
-      }
-    } catch (err) {
-      console.error("Error al guardar respuesta:", err);
-      toast({
-        variant: "error",
-        description: err instanceof Error ? err.message : "No se pudo guardar la respuesta",
-      });
+      // Optimista
       setAnswers((prev) => {
-        const rollback = new Map(prev);
-        if (previousOption) {
-          rollback.set(currentQuestion.id, previousOption);
-        } else {
-          rollback.delete(currentQuestion.id);
-        }
-        return rollback;
+        const updated = new Map(prev);
+        updated.set(questionId, optionId);
+        return updated;
       });
-    }
-  };
+
+      // Abort de petición anterior para esta pregunta (si existiera)
+      const prevController = answerControllersRef.current[questionId];
+      if (prevController) {
+        try {
+          prevController.abort();
+        } catch {
+          // ignorar
+        }
+      }
+      const controller = new AbortController();
+      answerControllersRef.current[questionId] = controller;
+
+      try {
+        const resp = await fetch(`/api/exams/attempts/${attemptId}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questionId, selectedOptionId: optionId }),
+          signal: controller.signal,
+          // mayor fiabilidad al cerrar o cambiar de página
+          keepalive: true,
+        });
+
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => null);
+          throw new Error(data?.message ?? "No se pudo guardar la respuesta");
+        }
+      } catch (err) {
+        // Ignorar abortos explícitos (por cambio rápido de selección)
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+        console.error("Error al guardar respuesta:", err);
+        toast({
+          variant: "error",
+          description: err instanceof Error ? err.message : "No se pudo guardar la respuesta",
+        });
+        // Rollback
+        setAnswers((prev) => {
+          const rollback = new Map(prev);
+          if (previousOption) {
+            rollback.set(questionId, previousOption);
+          } else {
+            rollback.delete(questionId);
+          }
+          return rollback;
+        });
+      } finally {
+        // Limpiar si es el controller actual
+        if (answerControllersRef.current[questionId] === controller) {
+          answerControllersRef.current[questionId] = null;
+        }
+      }
+    },
+    [attemptId, currentQuestion, timeOver, answers, toast]
+  );
 
   // Navegación
-  const handleNext = () => {
-    if (currentIndex < examData.questions.length - 1) setCurrentIndex(currentIndex + 1);
-    else handleSubmit();
-  };
-  const handlePrevious = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1); };
+  const handleNext = React.useCallback(() => {
+    if (currentIndex < examData.questions.length - 1) {
+      setCurrentIndex((idx) => idx + 1);
+    } else {
+      handleSubmit();
+    }
+  }, [currentIndex, examData.questions.length]); // handleSubmit no se incluye para evitar reinstanciar; último paso no depende de closuras mutables
+
+  const handlePrevious = React.useCallback(() => {
+    if (currentIndex > 0) setCurrentIndex((idx) => idx - 1);
+  }, [currentIndex]);
 
   // Envío
-  const handleSubmit = async () => {
+  const handleSubmit = React.useCallback(async () => {
     if (!attemptId || isSubmitting) {
       return;
     }
-
     setIsSubmitting(true);
     setLoading(true);
-
     try {
       const resp = await fetch(`/api/exams/attempts/${attemptId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timeSpent: timeSpentRef.current }),
+        keepalive: true,
       });
 
       if (!resp.ok) {
@@ -339,32 +409,38 @@ export function useExamViewModel(examData: ExamData) {
       setLoading(false);
       setIsSubmitting(false);
     }
-  };
+  }, [attemptId, isSubmitting, router, storageKey, examData.slug, toast]);
 
   // Tiempo
-  const handleTimeUpdate = React.useCallback((seconds: number) => {
-    timeSpentRef.current = seconds;
-    if (seconds >= MAX_SECONDS) {
-      setTimeOver(true);
-      setTimeSnapshot(seconds);
-      return;
-    }
-    if (seconds === 0) {
-      setTimeSnapshot(0);
-      return;
-    }
-    setTimeSnapshot((previous) => {
-      if (seconds < previous) {
-        return seconds;
-      }
-      if (seconds - previous >= 15) {
-        return seconds;
-      }
-      return previous;
-    });
-  }, []);
+  const handleTimeUpdate = React.useCallback(
+    (seconds: number) => {
+      timeSpentRef.current = seconds;
 
-  // Auto-submit al vencer tiempo (una sola vez)
+      if (seconds >= MAX_SECONDS) {
+        setTimeOver(true);
+        setTimeSnapshot(seconds);
+        return;
+      }
+
+      if (seconds === 0) {
+        setTimeSnapshot(0);
+        return;
+      }
+
+      setTimeSnapshot((previous) => {
+        if (seconds < previous) {
+          return seconds;
+        }
+        if (seconds - previous >= 15) {
+          return seconds;
+        }
+        return previous;
+      });
+    },
+    [MAX_SECONDS]
+  );
+
+  // Auto-submit una vez al vencer el tiempo
   React.useEffect(() => {
     if (!timeOver || isSubmitting || !attemptId) return;
     handleSubmit();
@@ -375,10 +451,10 @@ export function useExamViewModel(examData: ExamData) {
   const toggleAid = async (key: AidKey) => {
     if (!currentQuestion || !attemptId) return;
 
-    // Visibilidad local (toggle)
     const questionId = currentQuestion.id;
     const currentlyVisible = !!visibleAids[questionId]?.has(key);
 
+    // Toggle local
     setVisibleAids((prev) => {
       const next = { ...prev };
       const updated = new Set(prev[questionId] ?? []);
@@ -395,6 +471,7 @@ export function useExamViewModel(examData: ExamData) {
       return next;
     });
 
+    // Solo loggear la primera vez que se muestra
     if (currentlyVisible) return;
 
     const alreadyLogged = loggedAids[questionId]?.has(key) ?? false;
@@ -413,6 +490,7 @@ export function useExamViewModel(examData: ExamData) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ questionId, aidKey: key }),
+          keepalive: true,
         });
         if (!resp.ok) {
           const data = await resp.json().catch(() => null);
@@ -443,7 +521,7 @@ export function useExamViewModel(examData: ExamData) {
 
   const answeredCount = answers.size;
   const isLastQuestion = currentIndex === examData.questions.length - 1;
-  const hasAnswered = selectedOptionId !== null;
+  const hasAnswered = selectedOptionId !== null; // <-- corregido
 
   return {
     currentQuestion,
@@ -461,7 +539,6 @@ export function useExamViewModel(examData: ExamData) {
     handlePrevious,
     handleSubmit,
     handleTimeUpdate,
-    // ayudas
     toggleAid,
     isAidVisible,
     MAX_SECONDS,
