@@ -18,24 +18,46 @@ try {
   
   const prisma = new PrismaClient();
   
-  // ---------- Utilidades de parseo ----------
+  const DEBUG_PARSE = process.env.DEBUG_PARSE === '1';
+  
+  // ---------- Utilidades de parseo seguras (sin anclas no soportadas) ----------
+  
+  function normalizeMd(s) {
+    // Unificar saltos de línea y recortar tabs
+    return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\t/g, '  ');
+  }
   
   function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
   
-  function normalizeMd(s) {
-    return s.replace(/\r\n/g, '\n').replace(/\t/g, '  ');
+  function findSection(block, headerTitle) {
+    // Encuentra "### {headerTitle}" (con o sin ":" al final) y devuelve {start,end,text}
+    // Implementado sin lookaheads de fin de string para evitar falsos positivos.
+    const headerRe = new RegExp(
+      `^###\\s+${escapeRegExp(headerTitle)}\\s*:?\\s*$`,
+      'im'
+    );
+    const m = headerRe.exec(block);
+    if (!m) return null;
+  
+    // inicio del contenido = primer salto de línea después del encabezado encontrado
+    const startLineEnd = block.indexOf('\n', m.index);
+    const start = startLineEnd === -1 ? block.length : startLineEnd + 1;
+  
+    // buscar el siguiente encabezado de nivel 3 "### " dentro del resto del bloque
+    const rest = block.slice(start);
+    const nextHeaderRe = /^###\s+/im;
+    const n = nextHeaderRe.exec(rest);
+  
+    const end = n ? start + n.index : block.length;
+    const text = block.slice(start, end);
+    return { start, end, text };
   }
   
   function extractSection(block, title) {
-    // Captura desde "### {title}" hasta la siguiente cabecera ### o '---' o la próxima pregunta
-    const pattern = new RegExp(
-      `^###\\s+${escapeRegExp(title)}\\s*\\n([\\s\\S]*?)(?=^###\\s+|^---\\s*$|^##\\s+Pregunta\\s+\\d+|\\Z)`,
-      'im'
-    );
-    const match = block.match(pattern);
-    return match ? match[1].trim() : null;
+    const sec = findSection(block, title);
+    return sec ? sec.text.trim() : null;
   }
   
   function extractHeaderQuestionNumber(block) {
@@ -51,25 +73,29 @@ try {
   }
   
   // Parser robusto de opciones (A–D) por líneas.
-  // Soporta prefijos como "- ", "* ", "**A.**", "A.", "A)", etc.
-  // Mantiene texto multilínea por opción.
+  // Soporta "- ", "* ", "• ", "**A.**", "A.", "A)", con o sin espacios después del punto/paréntesis.
+  // Mantiene texto multilínea.
   function parseOptions(block) {
-    let optionsRaw = extractSection(block, 'Opciones de respuesta');
-    if (!optionsRaw) optionsRaw = extractSection(block, 'Opciones'); // fallback por si el título varía
-    if (!optionsRaw) return null;
+    let sec = findSection(block, 'Opciones de respuesta');
+    if (!sec) sec = findSection(block, 'Opciones'); // fallback si cambia el título
+    if (!sec) return null;
   
-    const lines = optionsRaw.split('\n');
+    const raw = sec.text;
+    const lines = raw.split('\n');
+  
     const map = {};
     let currentLabel = null;
     let buffer = [];
   
-    const startRegex = /^\s*(?:[-*]\s*)?(?:\*\*)?([A-D])(?:[.)])?(?:\*\*)?\s+/i;
+    // Incluye viñetas comunes y negritas, admite "A." o "A)" y espacios opcionales luego
+    const startRegex = /^\s*(?:[-*•]\s*)?(?:\*\*)?([A-Da-d])(?:\s*[\.)])?(?:\*\*)?\s*/;
   
     for (const rawLine of lines) {
-      const line = rawLine.replace(/\r/g, '');
+      // Reemplazar NBSP y similares por espacio normal para evitar sorpresas
+      const line = rawLine.replace(/\u00A0/g, ' ').replace(/\r/g, '');
       const m = line.match(startRegex);
       if (m) {
-        // Cierra opción previa
+        // cerrar opción anterior
         if (currentLabel) {
           map[currentLabel] = buffer.join('\n').trim();
           buffer = [];
@@ -85,9 +111,9 @@ try {
       map[currentLabel] = buffer.join('\n').trim();
     }
   
-    // Limpieza final
+    // Normalizar espacios
     for (const k of Object.keys(map)) {
-      map[k] = map[k].replace(/^\s+|\s+$/g, '');
+      map[k] = map[k].trim();
     }
   
     return Object.keys(map).length ? map : null;
@@ -118,11 +144,11 @@ try {
       help1Md: ayuda1,
       help2Md: ayuda2,
       optionsMap: opciones,
+      _rawOptionsPreview: opciones ? null : (findSection(block, 'Opciones de respuesta') || { text: '' }).text
     };
   }
   
   function splitIntoQuestionBlocks(markdown) {
-    // Separa por '## Pregunta N'
     const re = /^##\s+Pregunta\s+\d+.*$/gim;
     const indices = [];
     let m;
@@ -144,8 +170,9 @@ try {
       errors.push('orderIndex ausente');
     }
     if (!q.promptMd) errors.push('Enunciado ausente');
-    if (!q.optionsMap) errors.push('Opciones ausentes');
-    if (q.optionsMap) {
+    if (!q.optionsMap) {
+      errors.push('Opciones ausentes');
+    } else {
       ['A', 'B', 'C', 'D'].forEach((k) => {
         if (!q.optionsMap[k]) errors.push(`Opción ${k} ausente`);
       });
@@ -261,7 +288,13 @@ try {
       const q = parseQuestionBlock(block);
       const errs = validateParsed(q);
       if (errs.length) {
-        // Log mínimo por pregunta problemática para ayudar a depurar
+        if (DEBUG_PARSE) {
+          const preview =
+            q._rawOptionsPreview && q._rawOptionsPreview.trim()
+              ? q._rawOptionsPreview.split('\n').slice(0, 12).join('\n')
+              : '(sin contenido leído para "Opciones de respuesta")';
+          console.warn(`\n[DEBUG] Opciones leídas (Pregunta ${q.orderIndex ?? '?'})\n${preview}\n---\n`);
+        }
         parseErrors.push({ orderIndex: q.orderIndex ?? '¿?', errors: errs });
       } else {
         parsed.push(q);
