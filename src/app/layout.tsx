@@ -10,7 +10,7 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Math App | Autenticación",
+  title: "RQ+ | Autenticación",
   description: "Portal de aprendizaje con autenticación segura",
 };
 

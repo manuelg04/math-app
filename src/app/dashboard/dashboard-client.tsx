@@ -26,14 +26,14 @@ type ExamCard = {
 const AVAILABLE_EXAMS: ExamCard[] = [
   {
     slug: "saberpro_exam",
-    title: "Prueba de Entrada – Salida",
+    title: "Prueba de entrada",
     description: "Prueba diagnóstica de 35 preguntas para evaluar competencias en razonamiento cuantitativo.",
     questionCount: "35 preguntas",
     duration: "60 minutos",
   },
   {
     slug: "prueba_general",
-    title: "Prueba General",
+    title: "Entrenamiento",
     description: "Evaluación completa con ayudas opcionales por pregunta y límite de 90 minutos.",
     questionCount: "60 preguntas",
     duration: "90 minutos",
@@ -82,7 +82,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
       </section>
 
       <section className="mt-12">
-        <h2 className="text-2xl font-bold text-foreground">Exámenes Disponibles</h2>
+        <h2 className="text-2xl font-bold text-foreground">Módulos disponibles</h2>
         {activeExam && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
             <p className="font-medium text-amber-900">

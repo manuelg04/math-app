@@ -7,7 +7,7 @@ export default function Home() {
         <div className="flex flex-1 flex-col gap-8 text-center lg:text-left">
           <div className="space-y-6">
             <span className="inline-block rounded-full bg-primary/20 px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary">
-              Math App
+              RQ+
             </span>
             <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-6xl">
               Domina las matemáticas con un acompañamiento inteligente
@@ -34,7 +34,7 @@ export default function Home() {
         <div className="flex flex-1 justify-center lg:justify-end">
           <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl lg:p-10">
             <h2 className="mb-8 text-2xl font-bold text-foreground">
-              Ventajas de Math App
+              Ventajas de RQ+
             </h2>
             <ul className="space-y-6">
               <li className="flex items-start gap-4">

@@ -78,7 +78,7 @@ export function RegisterForm() {
                 required
               />
               <span>
-                Acepto los <Link href="#" className="font-semibold text-primary underline-offset-4 hover:underline">términos y condiciones</Link> de Math App.
+                Acepto los <Link href="#" className="font-semibold text-primary underline-offset-4 hover:underline">términos y condiciones</Link> de RQ+.
               </span>
             </label>
           </div>
