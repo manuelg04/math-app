@@ -31,19 +31,41 @@ export default async function TestPlaceholderPage({ params }: TestPlaceholderPag
     redirect("/onboarding");
   }
 
-  const testTypeNames = {
-    "saber-pro": "Prueba Saber Pro",
-    "icfes": "Saber 11°",
-    "tyt": "Saber T&T",
-  } as const;
+  const slugByType: Record<string, string> = {
+    "saber-pro": "saberpro_exam",
+  };
 
-  const testName = testTypeNames[params.type as keyof typeof testTypeNames] || "Prueba";
+  const targetSlug = slugByType[params.type];
+  if (!targetSlug) {
+    redirect("/onboarding");
+  }
+
+  const exam = await prisma.exam.findUnique({
+    where: { slug: targetSlug },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      durationMinutes: true,
+    },
+  });
+
+  if (!exam) {
+    redirect("/onboarding");
+  }
+
+  const questionCount = await prisma.question.count({
+    where: { examId: exam.id },
+  });
 
   return (
     <TestPlaceholder
-      testType={params.type}
-      testName={testName}
+      testName={exam.title}
       userName={user.fullName}
+      examId={exam.id}
+      examSlug={exam.slug}
+      durationMinutes={exam.durationMinutes}
+      questionCount={questionCount}
     />
   );
 }

@@ -14,7 +14,7 @@ interface OnboardingFormProps {
   initialData: {
     email: string;
     fullName: string;
-    profilePhoto: string;
+    profilePhoto: string | null;
   };
 }
 
@@ -31,7 +31,11 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
   } = useOnboardingViewModel(initialData);
 
   const [previewUrl, setPreviewUrl] = useState<string>(initialData.profilePhoto || "");
+  const [photoStatus, setPhotoStatus] = useState<"idle" | "ready" | "saved">(
+    initialData.profilePhoto ? "saved" : "idle",
+  );
   const objectUrlRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -41,16 +45,43 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!form.profilePhotoUrl) return;
+    setPhotoStatus("saved");
+    setPreviewUrl((current) => {
+      if (current === form.profilePhotoUrl) return current;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+      return form.profilePhotoUrl;
+    });
+  }, [form.profilePhotoUrl]);
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
       }
+      const accepted = handleFileChange(file);
+      if (!accepted) {
+        event.target.value = "";
+        return;
+      }
       const url = URL.createObjectURL(file);
       objectUrlRef.current = url;
       setPreviewUrl(url);
-      handleFileChange(file);
+      setPhotoStatus("ready");
+    } else {
+      setPhotoStatus(form.profilePhotoUrl ? "saved" : "idle");
+      if (form.profilePhotoUrl) {
+        setPreviewUrl(form.profilePhotoUrl);
+      }
     }
   };
 
@@ -58,8 +89,8 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>¿Para qué te quieres preparar?</CardTitle>
-          <CardDescription>Selecciona el tipo de prueba para iniciar tu diagnóstico</CardDescription>
+          <CardTitle>Selecciona tu prueba</CardTitle>
+          <CardDescription>Por ahora solo la Prueba Saber Pro está disponible</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
@@ -70,8 +101,12 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="saber-pro">Prueba Saber Pro</SelectItem>
-                <SelectItem value="icfes">ICFES</SelectItem>
-                <SelectItem value="tyt">TyT</SelectItem>
+                <SelectItem value="icfes" disabled>
+                  Saber 11° (próximamente)
+                </SelectItem>
+                <SelectItem value="tyt" disabled>
+                  Saber TyT (próximamente)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -84,7 +119,7 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
             disabled={!form.testType || loading}
             className="mt-6 w-full"
           >
-            Iniciar prueba diagnóstica
+            Ir a Prueba de entrada
           </Button>
         </CardContent>
       </Card>
@@ -100,14 +135,25 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
       <form onSubmit={handleSubmit}>
         <CardContent className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-4">
-            <div className="relative h-32 w-32 overflow-hidden rounded-full bg-muted">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={openFilePicker}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openFilePicker();
+                }
+              }}
+              className="relative h-32 w-32 overflow-hidden rounded-full bg-muted ring-offset-background transition hover:ring-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               {previewUrl ? (
                 <Image
                   src={previewUrl}
                   alt="Foto de perfil"
                   fill
                   className="object-cover"
-                  unoptimized={previewUrl.startsWith("data:")}
+                  unoptimized={previewUrl.startsWith("data:") || previewUrl.startsWith("blob:")}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -130,15 +176,39 @@ export function OnboardingForm({ initialData }: OnboardingFormProps) {
               <Input
                 id="photo"
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/jpg"
+                ref={fileInputRef}
                 onChange={handleImageChange}
                 className="hidden"
               />
               <Label htmlFor="photo" className="cursor-pointer">
-                <Button type="button" variant="secondary" className="h-9 px-4 text-sm">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-9 px-4 text-sm"
+                  onClick={openFilePicker}
+                >
                   Subir foto de perfil
                 </Button>
               </Label>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                JPG, JPEG o PNG hasta 10MB
+              </p>
+              <p
+                className={`mt-1 text-center text-xs ${
+                  photoStatus === "ready"
+                    ? "text-emerald-600"
+                    : photoStatus === "saved"
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {photoStatus === "ready"
+                  ? "Imagen lista para guardar"
+                  : photoStatus === "saved"
+                    ? "Imagen guardada en tu perfil"
+                    : "Aún no has seleccionado una imagen"}
+              </p>
             </div>
           </div>
 

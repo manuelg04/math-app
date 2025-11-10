@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
  */
 const EXAM_SLUG = "saberpro_exam";
 const EXAM_TITLE = "Prueba de Entrada – Salida";
-const EXAM_DESCRIPTION = "Prueba diagnóstica de 35 preguntas.";
+const EXAM_DESCRIPTION = "Prueba de entrada de 35 preguntas.";
 
 // Ruta del Markdown fuente
 const MD_PATH =

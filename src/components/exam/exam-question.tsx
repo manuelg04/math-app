@@ -30,6 +30,12 @@ function resolvePublicSrc(src: string): string {
 function MarkdownImage(props: { src?: string; alt?: string }) {
   const { src, alt } = props;
   const [useFallback, setUseFallback] = React.useState(false);
+  const imageStyle: React.CSSProperties = {
+    width: "auto",
+    height: "auto",
+    maxWidth: "min(100%, 640px)",
+    maxHeight: "70vh",
+  };
 
   if (!src || typeof src !== "string") return null;
 
@@ -40,7 +46,9 @@ function MarkdownImage(props: { src?: string; alt?: string }) {
       <img
         src={resolved}
         alt={alt || "Imagen de la pregunta"}
-        className="my-4 mx-auto block max-w-full rounded-lg h-auto"
+        className="my-4 mx-auto block rounded-lg"
+        style={imageStyle}
+        loading="lazy"
       />
     );
   }
@@ -49,12 +57,13 @@ function MarkdownImage(props: { src?: string; alt?: string }) {
     <Image
       src={resolved}
       alt={alt || "Imagen de la pregunta"}
-      className="my-4 mx-auto block max-w-full rounded-lg h-auto"
-      width={1200}
-      height={900}
-      sizes="100vw"
+      className="my-4 mx-auto block rounded-lg"
+      width={800}
+      height={600}
+      sizes="(min-width: 1024px) 600px, (min-width: 640px) 80vw, 95vw"
       // Clave: evitar el optimizer para rutas que pueden colisionar con /exams/[slug]
       unoptimized
+      style={imageStyle}
       onError={() => setUseFallback(true)}
       priority={false}
     />

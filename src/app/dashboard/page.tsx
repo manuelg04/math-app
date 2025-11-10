@@ -260,7 +260,7 @@ export default async function DashboardPage() {
           title: entryExam?.title ?? "Prueba de entrada",
           description:
             entryExam?.description ??
-            "Prueba diagnóstica de 35 preguntas para evaluar competencias en razonamiento cuantitativo.",
+            "Prueba de entrada de 35 preguntas para evaluar competencias en razonamiento cuantitativo.",
           questionCount: entryQuestionCount,
           durationMinutes: entryExam?.durationMinutes ?? 60,
           status: entryStatus,
@@ -282,7 +282,7 @@ export default async function DashboardPage() {
           slug: entryExam?.slug ?? "saberpro_exam",
           title: "Prueba de salida",
           description:
-            "Presenta nuevamente la prueba diagnóstica para medir tu progreso" +
+            "Presenta nuevamente la Prueba de entrada para medir tu progreso" +
             (trainingPlanSummary ? ` (Plan ${trainingPlanSummary.code})` : ""),
           status: exitStatus,
           attemptId: exitAttemptId,
