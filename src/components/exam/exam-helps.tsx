@@ -7,12 +7,23 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Button } from "@/components/ui/button";
 
+type AidKey = "AID1" | "AID2" | "AI_ASSIST";
+
+type AiAidProps = {
+  available: boolean;
+  disabledReason: string | null;
+  loading: boolean;
+  hint: string | null;
+  error: string | null;
+};
+
 type Props = {
   questionId: string;
   help1Md?: string | null;
   help2Md?: string | null;
-  onToggleAid: (key: "AID1" | "AID2") => void;
-  isAidVisible: (qId: string, key: "AID1" | "AID2") => boolean;
+  onToggleAid: (key: AidKey) => void;
+  isAidVisible: (qId: string, key: AidKey) => boolean;
+  aiAid?: AiAidProps;
 };
 
 /**
@@ -86,9 +97,10 @@ function RenderHelp({ text }: { text: string }) {
   );
 }
 
-export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisible }: Props) {
+export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisible, aiAid }: Props) {
   const show1 = !!help1Md && isAidVisible(questionId, "AID1");
   const show2 = !!help2Md && isAidVisible(questionId, "AID2");
+  const aiVisible = !!aiAid?.hint && isAidVisible(questionId, "AI_ASSIST");
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-white p-4">
@@ -111,6 +123,33 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
             {show2 ? "Ocultar Ayuda 2" : "Ver Ayuda 2"}
           </Button>
           {show2 && <RenderHelp text={help2Md} />}
+        </div>
+      )}
+
+      {aiAid && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">Ayuda IA</p>
+            {!aiAid.available && aiAid.disabledReason && (
+              <span className="text-xs text-muted-foreground">{aiAid.disabledReason}</span>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => onToggleAid("AI_ASSIST")}
+            disabled={!aiAid.available || aiAid.loading}
+            title={!aiAid.available ? aiAid.disabledReason ?? undefined : undefined}
+          >
+            {aiAid.loading
+              ? "Generando ayuda..."
+              : aiVisible
+                ? "Ocultar Ayuda IA"
+                : "Pedir Ayuda IA"}
+          </Button>
+          {aiAid.error && !aiAid.loading && (
+            <p className="text-xs text-destructive">{aiAid.error}</p>
+          )}
+          {aiVisible && aiAid.hint && <RenderHelp text={aiAid.hint} />}
         </div>
       )}
     </div>

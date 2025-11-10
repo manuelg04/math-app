@@ -49,6 +49,14 @@ type LocalStorageData = {
   loggedAids?: Record<string, AidKey[]>;
 };
 
+const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*]\([^)]*\)/i;
+const HTML_IMAGE_PATTERN = /<img\b[^>]*>/i;
+
+function containsImageContent(text?: string | null) {
+  if (!text) return false;
+  return MARKDOWN_IMAGE_PATTERN.test(text) || HTML_IMAGE_PATTERN.test(text);
+}
+
 export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindValue) {
   const MAX_SECONDS = React.useMemo(() => examData.durationMinutes * 60, [examData.durationMinutes]);
 
@@ -69,6 +77,10 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
   // ayudas visibles por pregunta y registro de ayudas notificadas
   const [visibleAids, setVisibleAids] = React.useState<Record<string, Set<AidKey>>>({});
   const [loggedAids, setLoggedAids] = React.useState<Record<string, Set<AidKey>>>({});
+  const [aiAidState, setAiAidState] = React.useState<
+    Record<string, { hint?: string; loading?: boolean; error?: string }>
+  >({});
+  const [academicProgram, setAcademicProgram] = React.useState<string | null>(null);
 
   const storageKey = React.useMemo(
     () => `exam_${examData.slug}_${attemptKind}`,
@@ -81,6 +93,29 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
   const skipAutoStartRef = React.useRef(false);
   const pendingRestoreRef = React.useRef<LocalStorageData | null>(null);
   const hasHydratedPendingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (attemptKind !== "TRAINING") return;
+    const controller = new AbortController();
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const resp = await fetch("/api/me", { signal: controller.signal });
+        if (!resp.ok) return;
+        const data = await resp.json().catch(() => null);
+        if (cancelled) return;
+        setAcademicProgram(data?.user?.academicProgram ?? null);
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") return;
+        console.warn("No se pudo cargar el perfil del usuario", error);
+      }
+    }
+    loadProfile();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [attemptKind]);
 
   const hydrateFromLocalData = React.useCallback(
     (data: LocalStorageData | null) => {
@@ -348,6 +383,14 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
 
   // Pregunta y selección actual (normalizada a null)
   const currentQuestion = examData.questions[currentIndex];
+
+  const questionHasMedia = React.useCallback((question: Question | null) => {
+    if (!question) return false;
+    if (containsImageContent(question.prompt)) return true;
+    return question.choices.some(
+      (choice) => Boolean(choice.imageUrl) || containsImageContent(choice.text)
+    );
+  }, []);
   const selectedOptionId: string | null = React.useMemo(() => {
     if (!currentQuestion) return null;
     return answers.get(currentQuestion.id) ?? null;
@@ -434,6 +477,7 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     } else {
       handleSubmit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, examData.questions.length]); // handleSubmit no se incluye para evitar reinstanciar; último paso no depende de closuras mutables
 
   const handlePrevious = React.useCallback(() => {
@@ -520,8 +564,124 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeOver, isSubmitting, attemptId]);
 
+  const aiAidAvailability = React.useMemo(() => {
+    if (!currentQuestion) {
+      return { available: false, reason: null as string | null };
+    }
+    if (attemptKind !== "TRAINING") {
+      return { available: false, reason: "La ayuda IA solo está disponible en entrenamientos" };
+    }
+    if (questionHasMedia(currentQuestion)) {
+      return { available: false, reason: "La ayuda IA no está disponible para preguntas con imágenes" };
+    }
+    return { available: true, reason: null };
+  }, [attemptKind, currentQuestion, questionHasMedia]);
+
+  const currentAiAid = currentQuestion ? aiAidState[currentQuestion.id] : undefined;
+
+  const handleAiAidToggle = React.useCallback(async () => {
+    if (!currentQuestion || !attemptId) return;
+
+    if (!aiAidAvailability.available) {
+      toast({
+        variant: "error",
+        description: aiAidAvailability.reason ?? "La ayuda IA no está disponible",
+      });
+      return;
+    }
+
+    const questionId = currentQuestion.id;
+    const currentlyVisible = !!visibleAids[questionId]?.has("AI_ASSIST");
+    if (currentlyVisible) {
+      setVisibleAids((prev) => {
+        const next = { ...prev };
+        const updated = new Set(next[questionId] ?? []);
+        updated.delete("AI_ASSIST");
+        if (updated.size === 0) {
+          delete next[questionId];
+        } else {
+          next[questionId] = updated;
+        }
+        return next;
+      });
+      return;
+    }
+
+    if (!currentAiAid?.hint) {
+      setAiAidState((prev) => ({
+        ...prev,
+        [questionId]: {
+          ...prev[questionId],
+          loading: true,
+          error: undefined,
+        },
+      }));
+      try {
+        const resp = await fetch(`/api/exams/attempts/${attemptId}/aid/ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            questionId,
+            academicProgram: academicProgram ?? undefined,
+          }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || typeof data?.hint !== "string") {
+          throw new Error(data?.message ?? "No se pudo generar la ayuda IA");
+        }
+        setAiAidState((prev) => ({
+          ...prev,
+          [questionId]: { hint: data.hint, loading: false, error: undefined },
+        }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo generar la ayuda IA";
+        setAiAidState((prev) => ({
+          ...prev,
+          [questionId]: { ...prev[questionId], loading: false, error: message },
+        }));
+        toast({ variant: "error", description: message });
+        return;
+      }
+    } else {
+      setAiAidState((prev) => ({
+        ...prev,
+        [questionId]: { ...prev[questionId], error: undefined },
+      }));
+    }
+
+    setVisibleAids((prev) => {
+      const next = { ...prev };
+      const updated = new Set(next[questionId] ?? []);
+      updated.add("AI_ASSIST");
+      next[questionId] = updated;
+      return next;
+    });
+
+    setLoggedAids((prev) => {
+      const next = { ...prev };
+      const updated = new Set(next[questionId] ?? []);
+      updated.add("AI_ASSIST");
+      next[questionId] = updated;
+      return next;
+    });
+  }, [
+    academicProgram,
+    aiAidAvailability.available,
+    aiAidAvailability.reason,
+    attemptId,
+    currentAiAid,
+    currentQuestion,
+    toast,
+    visibleAids,
+  ]);
+
   // Ayudas
   const toggleAid = async (key: AidKey) => {
+    if (key === "AI_ASSIST") {
+      await handleAiAidToggle();
+      return;
+    }
+
     if (!currentQuestion || !attemptId) return;
 
     const questionId = currentQuestion.id;
@@ -617,5 +777,12 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     MAX_SECONDS,
     timeOver,
     timeSpent: timeSnapshot,
+    aiAid: {
+      available: aiAidAvailability.available,
+      disabledReason: aiAidAvailability.reason,
+      loading: currentAiAid?.loading ?? false,
+      hint: currentAiAid?.hint ?? null,
+      error: currentAiAid?.error ?? null,
+    },
   };
 }

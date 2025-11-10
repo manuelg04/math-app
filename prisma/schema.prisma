@@ -182,6 +182,7 @@ model ExamAidUsage {
   attemptId  String   @map("attempt_id")
   questionId String   @map("question_id")
   aidKey     AidKey   @map("aid_key")
+  aiHint     String?  @map("ai_hint")
   createdAt  DateTime @default(now()) @map("created_at")
 
   attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)

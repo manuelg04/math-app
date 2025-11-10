@@ -156,6 +156,7 @@ export function ExamClient({ examData, context }: ExamClientProps) {
               help2Md={vm.currentQuestion.help2Md}
               onToggleAid={(k) => vm.toggleAid(k)}
               isAidVisible={vm.isAidVisible}
+              aiAid={vm.aiAid}
             />
 
             <ExamOptions
