@@ -33,8 +33,8 @@ export default async function TestPlaceholderPage({ params }: TestPlaceholderPag
 
   const testTypeNames = {
     "saber-pro": "Prueba Saber Pro",
-    "icfes": "ICFES",
-    "tyt": "TyT",
+    "icfes": "Saber 11°",
+    "tyt": "Saber T&T",
   } as const;
 
   const testName = testTypeNames[params.type as keyof typeof testTypeNames] || "Prueba";

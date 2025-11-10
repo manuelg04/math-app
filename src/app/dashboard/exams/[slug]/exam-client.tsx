@@ -9,6 +9,20 @@ import { ExamProgress } from "@/components/exam/exam-progress";
 import { ExamHelps } from "@/components/exam/exam-helps";
 import { useExamViewModel } from "@/view-models/exam/use-exam-vm";
 
+type AttemptKindValue = "GENERIC" | "ENTRY" | "TRAINING" | "EXIT";
+
+type TrainingPlanSummary = {
+  id: string;
+  code: string;
+  title: string | null;
+  description: string | null;
+  minRequiredToUnlockExit: number;
+  totalQuestions: number;
+  answeredCount: number;
+  remainingToUnlockExit: number;
+  unlockedExit: boolean;
+};
+
 type Question = {
   id: string;
   orderIndex: number;
@@ -35,6 +49,14 @@ type ExamData = {
   description: string | null;
   durationMinutes: number;
   questions: Question[];
+};
+
+type ExamClientProps = {
+  examData: ExamData;
+  context: {
+    attemptKind: AttemptKindValue;
+    trainingPlan?: TrainingPlanSummary;
+  };
 };
 
 // Bloquea el scroll del body y del html mientras el examen está montado.
@@ -69,8 +91,9 @@ function useLockViewportScroll() {
   }, []);
 }
 
-export function ExamClient({ examData }: { examData: ExamData }) {
-  const vm = useExamViewModel(examData);
+export function ExamClient({ examData, context }: ExamClientProps) {
+  const vm = useExamViewModel(examData, context.attemptKind);
+  const { trainingPlan, attemptKind } = context;
 
   // Bloquea scroll de ventana. Solo el contenedor central puede desplazarse.
   useLockViewportScroll();
@@ -98,6 +121,11 @@ export function ExamClient({ examData }: { examData: ExamData }) {
               <h1 className="text-xl font-bold text-foreground">{examData.title}</h1>
               {examData.description && (
                 <p className="mt-1 text-sm text-muted-foreground">{examData.description}</p>
+              )}
+              {trainingPlan && attemptKind !== "ENTRY" && (
+                <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Plan {trainingPlan.code} • {trainingPlan.answeredCount} / {trainingPlan.minRequiredToUnlockExit} preguntas para desbloquear salida • {trainingPlan.totalQuestions} totales
+                </p>
               )}
             </div>
             <ExamTimer

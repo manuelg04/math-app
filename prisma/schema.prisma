@@ -4,8 +4,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")            // app
-  directUrl = env("DATABASE_URL_UNPOOLED")   // migraciones
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum Role {
@@ -17,6 +17,25 @@ enum AidKey {
   AID1
   AID2
   AI_ASSIST
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+}
+
+enum AttemptKind {
+  GENERIC
+  ENTRY
+  TRAINING
+  EXIT
+}
+
+enum Level {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 model User {
@@ -35,6 +54,7 @@ model User {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   examAttempts       ExamAttempt[]
+  placements         Placement[]
 
   @@map("users")
   @@index([email])
@@ -53,6 +73,8 @@ model Exam {
 
   questions      Question[]
   examAttempts   ExamAttempt[]
+  categoryDefs   EntryCategoryDefinition[]
+  placementRules PlacementRule[]
 
   @@map("exams")
   @@index([slug])
@@ -77,6 +99,7 @@ model Question {
   choices        Option[]
   examResponses  ExamResponse[]
   aidUsages      ExamAidUsage[]
+  planQuestions  PlanQuestion[]
 
   @@unique([examId, orderIndex])
   @@map("questions")
@@ -100,12 +123,6 @@ model Option {
   @@index([questionId])
 }
 
-enum AttemptStatus {
-  IN_PROGRESS
-  SUBMITTED
-  EXPIRED
-}
-
 model ExamAttempt {
   id            String        @id @default(uuid()) @map("id")
   userId        String        @map("user_id")
@@ -115,18 +132,25 @@ model ExamAttempt {
   timeSpent     Int?          @map("time_spent")
   score         Float?        @map("score")
   status        AttemptStatus @default(IN_PROGRESS) @map("status")
+  kind          AttemptKind   @default(GENERIC) @map("kind")
+  trainingPlanId String?      @map("training_plan_id")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam          Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  trainingPlan  TrainingPlan?  @relation(fields: [trainingPlanId], references: [id], onDelete: SetNull)
   responses     ExamResponse[]
   aidUsages     ExamAidUsage[]
+  categoryScores EntryCategoryScore[]
+  placementsAsEntry Placement[]
 
   @@map("exam_attempts")
   @@index([userId])
   @@index([examId])
   @@index([status])
+  @@index([kind])
+  @@index([trainingPlanId])
 }
 
 model ExamResponse {
@@ -139,7 +163,7 @@ model ExamResponse {
   timeSpentMs      Int?      @map("time_spent_ms")
   usedAid1         Boolean   @default(false) @map("used_aid_1")
   usedAid2         Boolean   @default(false) @map("used_aid_2")
-  usedAidAi        Boolean   @default(false) @map("used_aid_ai") // NUEVO: ayuda IA
+  usedAidAi        Boolean   @default(false) @map("used_aid_ai")
   createdAt        DateTime  @default(now()) @map("created_at")
 
   attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
@@ -167,4 +191,129 @@ model ExamAidUsage {
   @@map("exam_aid_usages")
   @@index([attemptId])
   @@index([questionId])
+}
+
+/* ===== Planes de Entrenamiento, Reglas de colocación y Categorías ===== */
+
+model TrainingPlan {
+  id                        String         @id @default(uuid()) @map("id")
+  code                      String         @unique @map("code") // "A"..."G"
+  title                     String?        @map("title")
+  description               String?        @map("description")
+  minRequiredToUnlockExit   Int            @map("min_required_to_unlock_exit")
+  isActive                  Boolean        @default(true) @map("is_active")
+  createdAt                 DateTime       @default(now()) @map("created_at")
+  updatedAt                 DateTime       @updatedAt @map("updated_at")
+
+  placementRules PlacementRule[]
+  placements     Placement[]
+
+  planQuestions             PlanQuestion[]
+  examAttempts              ExamAttempt[]
+
+  @@map("training_plans")
+  @@index([isActive])
+}
+
+model PlanQuestion {
+  id             String        @id @default(uuid()) @map("id")
+  trainingPlanId String        @map("training_plan_id")
+  questionId     String        @map("question_id")
+  orderIndex     Int?          @map("order_index")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  trainingPlan   TrainingPlan  @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+  question       Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingPlanId, questionId])
+  @@map("plan_questions")
+  @@index([trainingPlanId])
+  @@index([questionId])
+}
+
+model EntryCategoryDefinition {
+  id            String   @id @default(uuid()) @map("id")
+  examId        String   @map("exam_id") // examen de entrada/salida ("saberpro_exam")
+  key           String   @map("key")     // "INTERPRETACION", "FORMULACION", "ARGUMENTACION"
+  name          String   @map("name")
+  orderStart    Int      @map("order_start") // rango por índice de orden
+  orderEnd      Int      @map("order_end")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  thresholds    EntryCategoryThreshold[]
+  scores        EntryCategoryScore[]
+
+  @@unique([examId, key])
+  @@map("entry_category_definitions")
+  @@index([examId])
+}
+
+model EntryCategoryThreshold {
+  id                      String  @id @default(uuid()) @map("id")
+  categoryDefinitionId    String  @map("category_definition_id")
+  level                   Level   @map("level")
+  minPointsInclusive      Int     @map("min_points_inclusive")
+  maxPointsInclusive      Int     @map("max_points_inclusive")
+
+  categoryDefinition      EntryCategoryDefinition @relation(fields: [categoryDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryDefinitionId, level])
+  @@map("entry_category_thresholds")
+  @@index([categoryDefinitionId])
+}
+
+model EntryCategoryScore {
+  id                      String    @id @default(uuid()) @map("id")
+  attemptId               String    @map("attempt_id") // intento ENTRY
+  categoryDefinitionId    String    @map("category_definition_id")
+  rawPoints               Int       @map("raw_points")
+  level                   Level     @map("level")
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  attempt                 ExamAttempt             @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  categoryDefinition      EntryCategoryDefinition @relation(fields: [categoryDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, categoryDefinitionId])
+  @@map("entry_category_scores")
+  @@index([attemptId])
+  @@index([categoryDefinitionId])
+}
+
+model PlacementRule {
+  id            String   @id @default(uuid()) @map("id")
+  examId        String   @map("exam_id") // examen de entrada/salida
+  interpLevel   Level    @map("interp_level")
+  formLevel     Level    @map("form_level")
+  arguLevel     Level    @map("argu_level")
+  trainingPlanId String  @map("training_plan_id")
+
+  exam          Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  trainingPlan  TrainingPlan  @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, interpLevel, formLevel, arguLevel])
+  @@map("placement_rules")
+  @@index([examId])
+  @@index([trainingPlanId])
+}
+
+model Placement {
+  id              String       @id @default(uuid()) @map("id")
+  userId          String       @map("user_id")
+  entryAttemptId  String       @map("entry_attempt_id")
+  trainingPlanId  String       @map("training_plan_id")
+  interpLevel     Level        @map("interp_level")
+  formLevel       Level        @map("form_level")
+  arguLevel       Level        @map("argu_level")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryAttempt    ExamAttempt  @relation(fields: [entryAttemptId], references: [id], onDelete: Cascade)
+  trainingPlan    TrainingPlan @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+
+  @@map("placements")
+  @@index([userId])
+  @@index([trainingPlanId])
+  @@index([entryAttemptId])
 }

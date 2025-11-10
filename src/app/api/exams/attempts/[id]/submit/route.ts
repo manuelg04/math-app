@@ -23,10 +23,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const result = await submitExamAttempt(attemptId, authToken.sub, timeSpent);
 
-    if (!result.success) {
-      console.error("[Submit] Error del servicio:", result.error);
-    } else {
+    if ("attempt" in result) {
       console.log("[Submit] Éxito:", result.attempt);
+    } else {
+      console.error("[Submit] Error del servicio:", result.error);
     }
 
     return NextResponse.json(result);

@@ -38,6 +38,8 @@ type ExamAnswer = { questionId: string; selectedOptionId: string };
 
 type AidKey = "AID1" | "AID2" | "AI_ASSIST";
 
+type AttemptKindValue = "GENERIC" | "ENTRY" | "TRAINING" | "EXIT";
+
 type LocalStorageData = {
   attemptId: string;
   answers: ExamAnswer[];
@@ -47,7 +49,7 @@ type LocalStorageData = {
   loggedAids?: Record<string, AidKey[]>;
 };
 
-export function useExamViewModel(examData: ExamData) {
+export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindValue) {
   const MAX_SECONDS = React.useMemo(() => examData.durationMinutes * 60, [examData.durationMinutes]);
 
   const router = useRouter();
@@ -68,11 +70,90 @@ export function useExamViewModel(examData: ExamData) {
   const [visibleAids, setVisibleAids] = React.useState<Record<string, Set<AidKey>>>({});
   const [loggedAids, setLoggedAids] = React.useState<Record<string, Set<AidKey>>>({});
 
-  const storageKey = `exam_${examData.slug}`;
+  const storageKey = React.useMemo(
+    () => `exam_${examData.slug}_${attemptKind}`,
+    [examData.slug, attemptKind]
+  );
   const persistTimeoutRef = React.useRef<number | null>(null);
 
   // Control de peticiones de respuesta por pregunta (evitar carreras)
   const answerControllersRef = React.useRef<Record<string, AbortController | null>>({});
+  const skipAutoStartRef = React.useRef(false);
+  const pendingRestoreRef = React.useRef<LocalStorageData | null>(null);
+  const hasHydratedPendingRef = React.useRef(false);
+
+  const hydrateFromLocalData = React.useCallback(
+    (data: LocalStorageData | null) => {
+      if (!data) return;
+
+      if (typeof data.timeSpent === "number" && Number.isFinite(data.timeSpent)) {
+        timeSpentRef.current = data.timeSpent;
+        setTimeSnapshot(data.timeSpent);
+        if (data.timeSpent >= MAX_SECONDS) {
+          setTimeOver(true);
+        } else {
+          setTimeOver(false);
+        }
+      }
+
+      if (Array.isArray(data.answers)) {
+        const answersMap = new Map<string, string>();
+        for (const a of data.answers) {
+          answersMap.set(a.questionId, a.selectedOptionId);
+        }
+        setAnswers(answersMap);
+      }
+
+      if (typeof data.currentIndex === "number" && examData.questions.length > 0) {
+        const safeIndex = Math.min(
+          Math.max(Math.floor(data.currentIndex), 0),
+          examData.questions.length - 1
+        );
+        setCurrentIndex(safeIndex);
+      }
+
+      if (data.visibleAids) {
+        const entries = Object.entries(data.visibleAids).map(([questionId, aids]) => [
+          questionId,
+          new Set((aids ?? []) as AidKey[]),
+        ]);
+        setVisibleAids(Object.fromEntries(entries) as Record<string, Set<AidKey>>);
+      }
+      if (data.loggedAids) {
+        const entries = Object.entries(data.loggedAids).map(([questionId, aids]) => [
+          questionId,
+          new Set((aids ?? []) as AidKey[]),
+        ]);
+        setLoggedAids(Object.fromEntries(entries) as Record<string, Set<AidKey>>);
+      }
+    },
+    [MAX_SECONDS, examData.questions.length]
+  );
+
+  const consumePendingRestore = React.useCallback(() => {
+    if (hasHydratedPendingRef.current) return;
+    if (!pendingRestoreRef.current) return;
+    hydrateFromLocalData(pendingRestoreRef.current);
+    pendingRestoreRef.current = null;
+    hasHydratedPendingRef.current = true;
+  }, [hydrateFromLocalData]);
+
+  const resetLocalProgress = React.useCallback(() => {
+    if (persistTimeoutRef.current) {
+      window.clearTimeout(persistTimeoutRef.current);
+      persistTimeoutRef.current = null;
+    }
+    answerControllersRef.current = {};
+    pendingRestoreRef.current = null;
+    hasHydratedPendingRef.current = false;
+    timeSpentRef.current = 0;
+    setTimeSnapshot(0);
+    setTimeOver(false);
+    setCurrentIndex(0);
+    setAnswers(new Map<string, string>());
+    setVisibleAids({});
+    setLoggedAids({});
+  }, []);
 
   // Cargar de localStorage (solo una vez)
   const [initialLoadDone, setInitialLoadDone] = React.useState(false);
@@ -82,55 +163,25 @@ export function useExamViewModel(examData: ExamData) {
     if (saved) {
       try {
         const data: LocalStorageData = JSON.parse(saved);
-
+        hasHydratedPendingRef.current = false;
         if (data.attemptId) {
+          pendingRestoreRef.current = data;
           setAttemptId(data.attemptId);
-        }
-
-        if (typeof data.timeSpent === "number" && Number.isFinite(data.timeSpent)) {
-          timeSpentRef.current = data.timeSpent;
-          setTimeSnapshot(data.timeSpent);
-          if (data.timeSpent >= MAX_SECONDS) {
-            setTimeOver(true);
-          }
-        }
-
-        if (Array.isArray(data.answers)) {
-          const answersMap = new Map<string, string>();
-          for (const a of data.answers) {
-            answersMap.set(a.questionId, a.selectedOptionId);
-          }
-          setAnswers(answersMap);
-        }
-
-        if (typeof data.currentIndex === "number" && examData.questions.length > 0) {
-          const safeIndex = Math.min(
-            Math.max(Math.floor(data.currentIndex), 0),
-            examData.questions.length - 1
-          );
-          setCurrentIndex(safeIndex);
-        }
-
-        if (data.visibleAids) {
-          const entries = Object.entries(data.visibleAids).map(([questionId, aids]) => [
-            questionId,
-            new Set((aids ?? []) as AidKey[]),
-          ]);
-          setVisibleAids(Object.fromEntries(entries) as Record<string, Set<AidKey>>);
-        }
-        if (data.loggedAids) {
-          const entries = Object.entries(data.loggedAids).map(([questionId, aids]) => [
-            questionId,
-            new Set((aids ?? []) as AidKey[]),
-          ]);
-          setLoggedAids(Object.fromEntries(entries) as Record<string, Set<AidKey>>);
+        } else {
+          pendingRestoreRef.current = null;
+          hydrateFromLocalData(data);
         }
       } catch (e) {
         console.error("Error al cargar datos guardados:", e);
+        pendingRestoreRef.current = null;
+        hasHydratedPendingRef.current = false;
       }
+    } else {
+      pendingRestoreRef.current = null;
+      hasHydratedPendingRef.current = false;
     }
     setInitialLoadDone(true);
-  }, [storageKey, examData.questions.length, MAX_SECONDS]);
+  }, [storageKey, hydrateFromLocalData]);
 
   // Serialización para localStorage
   const serializeAidState = React.useCallback(
@@ -214,7 +265,7 @@ export function useExamViewModel(examData: ExamData) {
 
   // Iniciar intento (solo una vez completada la carga inicial)
   React.useEffect(() => {
-    if (!initialLoadDone) return;
+    if (!initialLoadDone || skipAutoStartRef.current) return;
 
     if (attemptId) {
       // Validar attemptId
@@ -223,16 +274,20 @@ export function useExamViewModel(examData: ExamData) {
           const resp = await fetch(`/api/exams/attempts/${attemptId}/validate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ examId: examData.id }),
+            body: JSON.stringify({ examId: examData.id, attemptKind }),
           });
           if (!resp.ok) {
             console.warn("attemptId inválido para este examen, limpiando...");
             setAttemptId(null);
+            resetLocalProgress();
             localStorage.removeItem(storageKey);
+          } else {
+            consumePendingRestore();
           }
         } catch (err) {
           console.error("Error al validar attemptId:", err);
           setAttemptId(null);
+          resetLocalProgress();
           localStorage.removeItem(storageKey);
         }
       })();
@@ -245,26 +300,30 @@ export function useExamViewModel(examData: ExamData) {
         const resp = await fetch("/api/exams/attempts/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ examId: examData.id }),
+          body: JSON.stringify({ examId: examData.id, attemptKind }),
         });
         const result = await resp.json();
 
         if (result.success) {
           setAttemptId(result.attempt.id);
         } else {
-          console.error("Error al iniciar intento:", result.message);
-          if (resp.status === 409) {
-            // Examen activo existente
-            toast({
-              variant: "error",
-              description: "Ya tienes un examen en progreso. Redirigiéndote al dashboard...",
-            });
+          const message = result.message || result.error || "No se pudo iniciar el entrenamiento";
+          console.error("Error al iniciar intento:", message);
+          toast({ variant: "error", description: message });
+
+          const shouldRedirect =
+            resp.status === 409 ||
+            [
+              "ENTRY_ALREADY_COMPLETED",
+              "EXIT_ALREADY_COMPLETED",
+              "EXIT_LOCKED",
+              "EXIT_REQUIRES_PLACEMENT",
+              "TRAINING_REQUIRES_PLACEMENT",
+              "TRAINING_PLAN_INACTIVE",
+            ].includes(result.code as string);
+
+          if (shouldRedirect) {
             setTimeout(() => router.push("/dashboard"), 2000);
-          } else {
-            toast({
-              variant: "error",
-              description: result.message || "No se pudo iniciar el examen",
-            });
           }
         }
       } catch (err) {
@@ -275,7 +334,17 @@ export function useExamViewModel(examData: ExamData) {
         });
       }
     })();
-  }, [initialLoadDone, attemptId, examData.id, toast, router, storageKey]);
+  }, [
+    initialLoadDone,
+    attemptId,
+    examData.id,
+    attemptKind,
+    toast,
+    router,
+    storageKey,
+    resetLocalProgress,
+    consumePendingRestore,
+  ]);
 
   // Pregunta y selección actual (normalizada a null)
   const currentQuestion = examData.questions[currentIndex];
@@ -391,12 +460,16 @@ export function useExamViewModel(examData: ExamData) {
         throw new Error(errorData?.message ?? "Error al enviar el examen");
       }
 
-      const result = await resp.json();
+        const result = await resp.json();
 
-      if (result.success) {
-        localStorage.removeItem(storageKey);
-        router.push(`/dashboard/exams/${examData.slug}/results/${attemptId}`);
-      } else {
+        if (result.success) {
+          const finishedAttemptId = attemptId;
+          skipAutoStartRef.current = true;
+          setAttemptId(null);
+          resetLocalProgress();
+          localStorage.removeItem(storageKey);
+          router.push(`/dashboard/exams/${examData.slug}/results/${finishedAttemptId}`);
+        } else {
         throw new Error(result.message || result.error || "Error al enviar el examen");
       }
     } catch (err) {
@@ -409,7 +482,7 @@ export function useExamViewModel(examData: ExamData) {
       setLoading(false);
       setIsSubmitting(false);
     }
-  }, [attemptId, isSubmitting, router, storageKey, examData.slug, toast]);
+  }, [attemptId, isSubmitting, router, storageKey, examData.slug, toast, resetLocalProgress]);
 
   // Tiempo
   const handleTimeUpdate = React.useCallback(

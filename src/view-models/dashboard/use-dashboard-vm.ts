@@ -4,6 +4,22 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
+type TrainingPlanSummary = {
+  id: string;
+  code: string;
+  title: string | null;
+  description: string | null;
+  minRequiredToUnlockExit: number;
+  totalQuestions: number;
+  answeredCount: number;
+  remainingToUnlockExit: number;
+  unlockedExit: boolean;
+};
+
+type ExamStatusEntry = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+type ExamStatusTraining = "LOCKED" | "READY" | "IN_PROGRESS";
+type ExamStatusExit = "LOCKED" | "READY" | "IN_PROGRESS" | "COMPLETED";
+
 export type DashboardData = {
   user: {
     email: string;
@@ -16,10 +32,44 @@ export type DashboardData = {
   } | null;
   joinedDate: string;
   activeExam: {
+    attemptId: string;
+    attemptKind: string;
     examId: string;
     examSlug: string;
     examTitle: string;
   } | null;
+  entry: {
+    slug: string;
+    title: string;
+    description: string;
+    questionCount: number;
+    durationMinutes: number;
+    status: ExamStatusEntry;
+    attemptId: string | null;
+  };
+  training: {
+    slug: string;
+    title: string;
+    description: string;
+    questionCount: number;
+    durationMinutes: number;
+    status: ExamStatusTraining;
+    attemptId: string | null;
+    trainingPlan: TrainingPlanSummary | null;
+  };
+  exit: {
+    slug: string;
+    title: string;
+    description: string;
+    status: ExamStatusExit;
+    attemptId: string | null;
+    progress: {
+      answeredCount: number;
+      minRequiredToUnlockExit: number;
+      remainingToUnlockExit: number;
+      unlocked: boolean;
+    } | null;
+  };
 };
 
 export function useDashboardViewModel(initialData: DashboardData) {
@@ -47,6 +97,9 @@ export function useDashboardViewModel(initialData: DashboardData) {
     user: initialData.user,
     joinedDate: initialData.joinedDate,
     activeExam: initialData.activeExam,
+    entry: initialData.entry,
+    training: initialData.training,
+    exit: initialData.exit,
     loading,
     handleLogout,
   };

@@ -23,7 +23,7 @@ export default async function ExamResultsPage({
       <main className="flex min-h-screen items-center justify-center bg-secondary">
         <div className="rounded-lg border border-border bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-bold text-destructive">Resultados no encontrados</h1>
-          <p className="mt-2 text-muted-foreground">No se pudo cargar los resultados del examen.</p>
+          <p className="mt-2 text-muted-foreground">No se pudo cargar los resultados del entrenamiento.</p>
           <Link href="/dashboard">
             <Button className="mt-4">Volver al Dashboard</Button>
           </Link>
@@ -33,21 +33,32 @@ export default async function ExamResultsPage({
   }
 
   const { attempt } = result;
-  const totalQuestions = attempt.exam.questions.length;
+  const planMeta =
+    attempt.kind === "TRAINING" && attempt.trainingPlan
+      ? {
+          code: attempt.trainingPlan.code,
+          title: attempt.trainingPlan.title ?? `Plan ${attempt.trainingPlan.code}`,
+          totalQuestions: attempt.trainingPlan._count?.planQuestions ?? null,
+        }
+      : null;
+
+  const planQuestionTotal = planMeta?.totalQuestions ?? null;
+  const totalQuestions = planQuestionTotal ?? attempt.exam.questions.length;
   const correctAnswers = attempt.responses.filter((r) => r.isCorrect === true).length;
-  const incorrectAnswers = totalQuestions - correctAnswers;
+  const incorrectAnswers = Math.max(totalQuestions - correctAnswers, 0);
   const score = attempt.score || 0;
   const timeSpentMinutes = attempt.timeSpent ? Math.floor(attempt.timeSpent / 60) : 0;
   const timeSpentSeconds = attempt.timeSpent ? attempt.timeSpent % 60 : 0;
+  const showRetry = attempt.kind === "TRAINING";
 
   return (
     <main className="min-h-screen bg-secondary px-6 py-10 text-foreground lg:px-16">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="rounded-3xl bg-primary px-6 py-10 text-center text-primary-foreground">
-          <h1 className="text-3xl font-bold">¡Examen Completado!</h1>
+          <h1 className="text-3xl font-bold">¡Entrenamiento Completado!</h1>
           <p className="mt-2 text-lg text-primary-foreground/80">
-            Has finalizado el examen exitosamente
+            Has finalizado el entrenamiento exitosamente
           </p>
         </div>
 
@@ -66,8 +77,21 @@ export default async function ExamResultsPage({
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-sm">
               <CheckCircle className="mx-auto h-8 w-8 text-green-600" />
-              <p className="mt-4 text-3xl font-bold text-foreground">{correctAnswers}</p>
-              <p className="mt-1 text-sm text-muted-foreground">Respuestas Correctas</p>
+              <p className="mt-4 text-3xl font-bold text-foreground">
+                {planMeta ? (
+                  <span>
+                    {correctAnswers}
+                    <span className="text-xl text-muted-foreground">/{totalQuestions}</span>
+                  </span>
+                ) : (
+                  correctAnswers
+                )}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {planMeta
+                  ? `${correctAnswers}/${totalQuestions} correctas en ${planMeta.title}`
+                  : "Respuestas Correctas"}
+              </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-sm">
@@ -92,6 +116,12 @@ export default async function ExamResultsPage({
               <p>
                 <span className="font-medium text-foreground">Total de preguntas:</span> {totalQuestions}
               </p>
+              {planMeta && (
+                <p>
+                  <span className="font-medium text-foreground">Plan de entrenamiento:</span>{" "}
+                  {planMeta.title} ({correctAnswers}/{totalQuestions} correctas)
+                </p>
+              )}
               <p>
                 <span className="font-medium text-foreground">Fecha de inicio:</span>{" "}
                 {new Date(attempt.startedAt).toLocaleString("es-CO")}
@@ -112,9 +142,11 @@ export default async function ExamResultsPage({
                 Volver al Dashboard
               </Button>
             </Link>
-            <Link href={`/dashboard/exams/${slug}`} className="flex-1">
-              <Button className="w-full">Intentar de Nuevo</Button>
-            </Link>
+            {showRetry && (
+              <Link href={`/dashboard/exams/${slug}`} className="flex-1">
+                <Button className="w-full">Intentar de Nuevo</Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
