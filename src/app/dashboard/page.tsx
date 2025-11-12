@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import { AttemptKind, AttemptStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { readAuthToken } from "@/lib/auth";
 import { DashboardClient } from "./dashboard-client";
+
+export const dynamic = "force-dynamic";
 
 async function computeTrainingPlanSummary(userId: string, trainingPlanId: string) {
   const trainingPlan = await prisma.trainingPlan.findUnique({
@@ -59,6 +62,7 @@ async function computeTrainingPlanSummary(userId: string, trainingPlanId: string
 }
 
 export default async function DashboardPage() {
+  noStore();
   const token = await readAuthToken();
   if (!token) {
     redirect("/login");

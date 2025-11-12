@@ -20,6 +20,14 @@ export function useLoginViewModel() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
+  React.useEffect(() => {
+    try {
+      router.prefetch("/dashboard");
+    } catch {
+      // ignore prefetch failures (offline, etc.)
+    }
+  }, [router]);
+
   const handleChange = React.useCallback(
     (field: Field) =>
       (event: ChangeEvent) => {
@@ -54,7 +62,9 @@ export function useLoginViewModel() {
 
         toast({ variant: "success", title: "Bienvenido", description: data.message ?? "Inicio de sesión exitoso" });
         setForm(INITIAL_STATE);
-        router.push(redirect);
+        React.startTransition(() => {
+          router.push(redirect);
+        });
       } catch (error) {
         toast({ variant: "error", description: error instanceof Error ? error.message : "Error inesperado" });
       } finally {

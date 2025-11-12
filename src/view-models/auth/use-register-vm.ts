@@ -21,6 +21,14 @@ export function useRegisterViewModel() {
   const { toast } = useToast();
   const router = useRouter();
 
+  React.useEffect(() => {
+    try {
+      router.prefetch("/dashboard");
+    } catch {
+      // Ignoramos errores de prefetch por red
+    }
+  }, [router]);
+
   const handleChange = React.useCallback(
     (field: Field) =>
       (event: ChangeEvent) => {
@@ -64,7 +72,10 @@ export function useRegisterViewModel() {
 
         toast({ variant: "success", title: "Cuenta creada", description: data.message ?? "Registro exitoso" });
         setForm(INITIAL_STATE);
-        router.push((data?.redirect as string | undefined) ?? "/dashboard");
+        const redirect = (data?.redirect as string | undefined) ?? "/dashboard";
+        React.startTransition(() => {
+          router.push(redirect);
+        });
       } catch (error) {
         toast({ variant: "error", description: error instanceof Error ? error.message : "Error inesperado" });
       } finally {

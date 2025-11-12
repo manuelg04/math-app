@@ -58,7 +58,10 @@ function containsImageContent(text?: string | null) {
 }
 
 export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindValue) {
-  const MAX_SECONDS = React.useMemo(() => examData.durationMinutes * 60, [examData.durationMinutes]);
+  const MAX_SECONDS = React.useMemo(
+    () => (attemptKind === "TRAINING" ? Number.POSITIVE_INFINITY : examData.durationMinutes * 60),
+    [attemptKind, examData.durationMinutes]
+  );
 
   const router = useRouter();
   const { toast } = useToast();
@@ -504,16 +507,15 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
         throw new Error(errorData?.message ?? "Error al enviar el examen");
       }
 
-        const result = await resp.json();
+      const result = await resp.json();
 
-        if (result.success) {
-          const finishedAttemptId = attemptId;
-          skipAutoStartRef.current = true;
-          setAttemptId(null);
-          resetLocalProgress();
-          localStorage.removeItem(storageKey);
-          router.push(`/dashboard/exams/${examData.slug}/results/${finishedAttemptId}`);
-        } else {
+      if (result.success) {
+        const finishedAttemptId = attemptId;
+        skipAutoStartRef.current = true;
+        setAttemptId(null);
+        localStorage.removeItem(storageKey);
+        router.push(`/dashboard/exams/${examData.slug}/results/${finishedAttemptId}`);
+      } else {
         throw new Error(result.message || result.error || "Error al enviar el examen");
       }
     } catch (err) {
@@ -526,7 +528,7 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
       setLoading(false);
       setIsSubmitting(false);
     }
-  }, [attemptId, isSubmitting, router, storageKey, examData.slug, toast, resetLocalProgress]);
+  }, [attemptId, isSubmitting, router, storageKey, examData.slug, toast]);
 
   // Tiempo
   const handleTimeUpdate = React.useCallback(
@@ -563,6 +565,17 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     handleSubmit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeOver, isSubmitting, attemptId]);
+
+  React.useEffect(() => {
+    if (attemptKind !== "TRAINING") return;
+    if (typeof window === "undefined") return;
+    const interval = window.setInterval(() => {
+      handleTimeUpdate(timeSpentRef.current + 1);
+    }, 1000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [attemptKind, handleTimeUpdate]);
 
   const aiAidAvailability = React.useMemo(() => {
     if (!currentQuestion) {

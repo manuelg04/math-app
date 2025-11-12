@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AttemptKind } from "@prisma/client";
 import { readAuthToken } from "@/lib/auth";
 import { getExamAttemptById } from "@/server/services/exam-attempt-service";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export default async function ExamResultsPage({
       <main className="flex min-h-screen items-center justify-center bg-secondary">
         <div className="rounded-lg border border-border bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-bold text-destructive">Resultados no encontrados</h1>
-          <p className="mt-2 text-muted-foreground">No se pudo cargar los resultados del entrenamiento.</p>
+          <p className="mt-2 text-muted-foreground">No se pudo cargar los resultados de esta evaluación.</p>
           <Link href="/dashboard">
             <Button className="mt-4">Volver al Dashboard</Button>
           </Link>
@@ -50,16 +51,34 @@ export default async function ExamResultsPage({
   const timeSpentMinutes = attempt.timeSpent ? Math.floor(attempt.timeSpent / 60) : 0;
   const timeSpentSeconds = attempt.timeSpent ? attempt.timeSpent % 60 : 0;
   const showRetry = attempt.kind === "TRAINING";
+  const headerCopy = (() => {
+    switch (attempt.kind) {
+      case AttemptKind.ENTRY:
+        return {
+          title: "¡Prueba de Entrada Completada!",
+          subtitle: "Has finalizado la prueba de entrada exitosamente",
+        };
+      case AttemptKind.EXIT:
+        return {
+          title: "¡Prueba de Salida Completada!",
+          subtitle: "Has finalizado la prueba de salida exitosamente",
+        };
+      case AttemptKind.TRAINING:
+      default:
+        return {
+          title: "¡Entrenamiento Completado!",
+          subtitle: "Has finalizado el entrenamiento exitosamente",
+        };
+    }
+  })();
 
   return (
     <main className="min-h-screen bg-secondary px-6 py-10 text-foreground lg:px-16">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="rounded-3xl bg-primary px-6 py-10 text-center text-primary-foreground">
-          <h1 className="text-3xl font-bold">¡Entrenamiento Completado!</h1>
-          <p className="mt-2 text-lg text-primary-foreground/80">
-            Has finalizado el entrenamiento exitosamente
-          </p>
+          <h1 className="text-3xl font-bold">{headerCopy.title}</h1>
+          <p className="mt-2 text-lg text-primary-foreground/80">{headerCopy.subtitle}</p>
         </div>
 
         {/* Resultados */}

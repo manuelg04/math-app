@@ -8,6 +8,8 @@ import { ExamTimer } from "@/components/exam/exam-timer";
 import { ExamProgress } from "@/components/exam/exam-progress";
 import { ExamHelps } from "@/components/exam/exam-helps";
 import { useExamViewModel } from "@/view-models/exam/use-exam-vm";
+import { TrainingCompletionModal } from "@/components/exam/training-completion-modal";
+import { useRouter } from "next/navigation";
 
 type AttemptKindValue = "GENERIC" | "ENTRY" | "TRAINING" | "EXIT";
 
@@ -92,13 +94,92 @@ function useLockViewportScroll() {
 }
 
 export function ExamClient({ examData, context }: ExamClientProps) {
-  const vm = useExamViewModel(examData, context.attemptKind);
+  const router = useRouter();
   const { trainingPlan, attemptKind } = context;
+  const vm = useExamViewModel(examData, attemptKind);
+  const {
+    currentQuestion,
+    currentIndex,
+    totalQuestions,
+    selectedOptionId,
+    answeredCount,
+    loading,
+    isLastQuestion,
+    hasAnswered,
+    canGoBack,
+    canGoNext,
+    handleSelectOption,
+    handleNext,
+    handlePrevious,
+    handleSubmit,
+    handleTimeUpdate,
+    toggleAid,
+    isAidVisible,
+    MAX_SECONDS,
+    timeOver,
+    timeSpent,
+    aiAid,
+  } = vm;
+  const [trainingModalOpen, setTrainingModalOpen] = React.useState(false);
+  const modalSeenRef = React.useRef(false);
+  const trainingModalStorageKey = trainingPlan ? `training_plan_exit_modal_${trainingPlan.id}` : null;
+  const trainingPlanAnsweredCount = trainingPlan?.answeredCount ?? 0;
+  const trainingPlanMinRequired = trainingPlan?.minRequiredToUnlockExit ?? 0;
+  const hasTrainingPlan = Boolean(trainingPlan);
+
+  React.useEffect(() => {
+    if (!trainingModalStorageKey) {
+      modalSeenRef.current = true;
+      setTrainingModalOpen(false);
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      modalSeenRef.current = window.localStorage.getItem(trainingModalStorageKey) === "seen";
+    } catch {
+      modalSeenRef.current = false;
+    }
+    setTrainingModalOpen(false);
+  }, [trainingModalStorageKey]);
+
+  React.useEffect(() => {
+    if (!hasTrainingPlan || attemptKind !== "TRAINING") return;
+    if (trainingPlanAnsweredCount >= trainingPlanMinRequired) return;
+    if (modalSeenRef.current) return;
+    const totalAnswered = trainingPlanAnsweredCount + answeredCount;
+    if (totalAnswered < trainingPlanMinRequired) return;
+    modalSeenRef.current = true;
+    if (trainingModalStorageKey && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(trainingModalStorageKey, "seen");
+      } catch {
+        // ignore storage errors
+      }
+    }
+    setTrainingModalOpen(true);
+  }, [
+    answeredCount,
+    attemptKind,
+    hasTrainingPlan,
+    trainingModalStorageKey,
+    trainingPlanAnsweredCount,
+    trainingPlanMinRequired,
+  ]);
+
+  const handleGoToDashboard = React.useCallback(() => {
+    router.push("/dashboard");
+  }, [router]);
+
+  const handleCloseTrainingModal = React.useCallback(() => {
+    setTrainingModalOpen(false);
+  }, []);
 
   // Bloquea scroll de ventana. Solo el contenedor central puede desplazarse.
   useLockViewportScroll();
 
-  if (!vm.currentQuestion) {
+  if (!currentQuestion) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-secondary">
         <div className="text-center">
@@ -116,24 +197,30 @@ export function ExamClient({ examData, context }: ExamClientProps) {
       {/* Header fijo (no necesita sticky porque el scroll es interno) */}
       <header className="flex-shrink-0 border-b border-border bg-white">
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{examData.title}</h1>
-              {examData.description && (
-                <p className="mt-1 text-sm text-muted-foreground">{examData.description}</p>
-              )}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-foreground">{examData.title}</h1>
+                {examData.description && (
+                  <p className="mt-1 text-sm text-muted-foreground">{examData.description}</p>
+                )}
               {trainingPlan && attemptKind !== "ENTRY" && (
                 <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
                   Plan {trainingPlan.code} • {trainingPlan.answeredCount} / {trainingPlan.minRequiredToUnlockExit} preguntas para desbloquear salida • {trainingPlan.totalQuestions} totales
                 </p>
               )}
             </div>
-            <ExamTimer
-              initialSeconds={vm.timeSpent}
-              limitSeconds={vm.MAX_SECONDS}
-              onTimeUpdate={vm.handleTimeUpdate}
-              onTimeOver={vm.handleSubmit}
-            />
+            {attemptKind === "TRAINING" ? (
+              <div className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground">
+                Entrenamiento sin límite de tiempo
+              </div>
+            ) : (
+              <ExamTimer
+                initialSeconds={timeSpent}
+                limitSeconds={MAX_SECONDS}
+                onTimeUpdate={handleTimeUpdate}
+                onTimeOver={handleSubmit}
+              />
+            )}
           </div>
         </div>
       </header>
@@ -142,28 +229,28 @@ export function ExamClient({ examData, context }: ExamClientProps) {
       <section className="flex-1 min-h-0 overflow-y-auto overscroll-none">
         <div className="mx-auto max-w-4xl px-4 pt-6 pb-8 sm:px-6 lg:px-8">
           <div className="space-y-6">
-            <ExamProgress totalQuestions={vm.totalQuestions} answeredCount={vm.answeredCount} />
+            <ExamProgress totalQuestions={totalQuestions} answeredCount={answeredCount} />
 
             <ExamQuestion
-              questionNumber={vm.currentIndex + 1}
-              totalQuestions={vm.totalQuestions}
-              prompt={vm.currentQuestion.prompt}
+              questionNumber={currentIndex + 1}
+              totalQuestions={totalQuestions}
+              prompt={currentQuestion.prompt}
             />
 
             <ExamHelps
-              questionId={vm.currentQuestion.id}
-              help1Md={vm.currentQuestion.help1Md}
-              help2Md={vm.currentQuestion.help2Md}
-              onToggleAid={(k) => vm.toggleAid(k)}
-              isAidVisible={vm.isAidVisible}
-              aiAid={vm.aiAid}
+              questionId={currentQuestion.id}
+              help1Md={currentQuestion.help1Md}
+              help2Md={currentQuestion.help2Md}
+              onToggleAid={(k) => toggleAid(k)}
+              isAidVisible={isAidVisible}
+              aiAid={aiAid}
             />
 
             <ExamOptions
-              options={vm.currentQuestion.choices}
-              selectedOptionId={vm.selectedOptionId ?? null}
-              onSelect={vm.handleSelectOption}
-              disabled={vm.loading || vm.timeOver}
+              options={currentQuestion.choices}
+              selectedOptionId={selectedOptionId ?? null}
+              onSelect={handleSelectOption}
+              disabled={loading || timeOver}
             />
           </div>
         </div>
@@ -173,18 +260,24 @@ export function ExamClient({ examData, context }: ExamClientProps) {
       <footer className="flex-shrink-0 border-t border-border bg-white shadow-lg">
         <div className="mx-auto max-w-4xl">
           <ExamNavigation
-            currentIndex={vm.currentIndex}
-            totalQuestions={vm.totalQuestions}
-            onPrevious={vm.handlePrevious}
-            onNext={vm.handleNext}
-            canGoBack={vm.canGoBack}
-            canGoNext={vm.canGoNext}
-            isLastQuestion={vm.isLastQuestion}
-            hasAnswered={vm.hasAnswered}
-            disabled={vm.timeOver}
+            currentIndex={currentIndex}
+            totalQuestions={totalQuestions}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            canGoBack={canGoBack}
+            canGoNext={canGoNext}
+            isLastQuestion={isLastQuestion}
+            hasAnswered={hasAnswered}
+            disabled={timeOver}
           />
         </div>
       </footer>
+
+      <TrainingCompletionModal
+        open={trainingModalOpen}
+        onContinue={handleCloseTrainingModal}
+        onGoToDashboard={handleGoToDashboard}
+      />
     </main>
   );
 }
