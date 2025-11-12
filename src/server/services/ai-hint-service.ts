@@ -16,24 +16,59 @@ function buildPrompt(params: {
   promptMarkdown: string;
   choices: Array<{ label: string; text: string | null }>;
   academicProgram: string | null;
+  competency?: string | null;
+  contentArea?: string | null;
+  contextNote?: string | null;
 }) {
-  const { promptMarkdown, choices, academicProgram } = params;
-  const lines = [
-    "Eres un tutor de matemáticas universitarias. Responde en español con un máximo de 800 caracteres,",
-    "sin imágenes. Usa notación matemática clara (puedes emplear LaTeX inline). Ofrece solo una pista breve.",
+  const { promptMarkdown, choices, academicProgram, competency, contentArea, contextNote } = params;
+
+  const summaryLines = [
+    `Programa académico del estudiante: ${academicProgram || "No especificado"}`,
+    competency ? `Competencia / tema: ${competency}` : null,
+    contentArea ? `Área de contenido: ${contentArea}` : null,
+    contextNote ? `Contexto reportado en el ejercicio: ${contextNote}` : null,
+  ].filter(Boolean) as string[];
+
+  const originalOptions = choices
+    .map((choice) => `${choice.label}) ${choice.text ?? ""}`.trim())
+    .join("\n");
+
+  return [
+    "Actúa como tutor experto en razonamiento cuantitativo para educación superior.",
+    "Debes generar un NUEVO problema contextualizado al ejercicio del estudiante y a su programa académico.",
     "",
-    `Programa académico: ${academicProgram || "No especificado"}`,
+    "Formato obligatorio en Markdown:",
+    "### Contexto",
+    "Describe el escenario laboral o profesional pertinente.",
+    "### Problema",
+    "Plantea el enunciado completo del nuevo ejercicio.",
+    "### Opciones",
+    "- A) ...",
+    "- B) ...",
+    "- C) ...",
+    "- D) ...",
+    "### Resolución paso a paso",
+    "Explica la solución en máximo 5-6 pasos numerados e identifica cuál opción es correcta.",
     "",
-    "Pregunta:",
+    "Requisitos estrictos:",
+    "- Incluye exactamente cuatro opciones (A-D) con UNA sola respuesta correcta.",
+    "- Usa valores numéricos realistas (enteros o decimales con una sola cifra decimal).",
+    "- El contexto debe ser verosímil para el programa académico indicado.",
+    "- Relaciona el nuevo problema con la misma competencia o tema del ejercicio original.",
+    "- La resolución debe ser clara, sin rodeos y sin exceder los 6 pasos.",
+    "- No reveles la opción correcta fuera de la sección de resolución.",
+    "",
+    "Datos del ejercicio original para inspirarte:",
+    ...summaryLines,
+    "",
+    "Enunciado original:",
     promptMarkdown,
     "",
-    "Opciones:",
-  ];
-  for (const choice of choices) {
-    lines.push(`${choice.label}) ${choice.text ?? ""}`.trim());
-  }
-  lines.push("", "Instrucciones: Orienta al estudiante sin resolver completamente el ejercicio.");
-  return lines.join("\n");
+    "Opciones originales:",
+    originalOptions,
+    "",
+    "Recuerda: genera un problema NUEVO (no copies el original) y mantén la respuesta correcta coherente con la solución descrita.",
+  ].join("\n");
 }
 
 type OpenAiResponse = {
@@ -96,7 +131,7 @@ async function requestOpenAiHint(prompt: string) {
   if (!output) {
     throw new Error("OpenAI no entregó contenido");
   }
-  return output.length > 800 ? `${output.slice(0, 800).trim()}…` : output;
+  return output.trim();
 }
 
 export async function getOrCreateAiHint(params: {
@@ -130,6 +165,9 @@ export async function getOrCreateAiHint(params: {
     select: {
       id: true,
       prompt: true,
+      competency: true,
+      contentArea: true,
+      context: true,
       choices: {
         select: {
           label: true,
@@ -170,6 +208,9 @@ export async function getOrCreateAiHint(params: {
     promptMarkdown: question.prompt,
     choices: question.choices.map((choice) => ({ label: choice.label, text: choice.text })),
     academicProgram: attempt.user.academicProgram ?? fallbackAcademicProgram ?? null,
+    competency: question.competency,
+    contentArea: question.contentArea,
+    contextNote: question.context,
   });
 
   try {

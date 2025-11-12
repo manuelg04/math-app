@@ -221,7 +221,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
                 <p>{training.trainingPlan.totalQuestions}</p>
               </div>
               <div>
-                <p className="font-semibold text-foreground">Respondidas</p>
+                <p className="font-semibold text-foreground">Minimo para desbloquear salida</p>
                 <p>
                   {training.trainingPlan.answeredCount} / {training.trainingPlan.minRequiredToUnlockExit}
                 </p>

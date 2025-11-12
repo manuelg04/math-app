@@ -6,6 +6,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
 type AidKey = "AID1" | "AID2" | "AI_ASSIST";
 
@@ -48,11 +50,16 @@ function normalizeMathDelimiters(md: string): string {
   return inlineNormalized;
 }
 
-function RenderHelp({ text }: { text: string }) {
+function RenderHelp({ text, variant = "card" }: { text: string; variant?: "card" | "bare" }) {
   const content = React.useMemo(() => normalizeMathDelimiters(text), [text]);
 
   return (
-    <div className="prose prose-sm max-w-none rounded-md border border-border p-3">
+    <div
+      className={cn(
+        "prose prose-sm max-w-none",
+        variant === "card" ? "rounded-md border border-border bg-white p-3" : "px-1 pb-4"
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
@@ -101,6 +108,7 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
   const show1 = !!help1Md && isAidVisible(questionId, "AID1");
   const show2 = !!help2Md && isAidVisible(questionId, "AID2");
   const aiVisible = !!aiAid?.hint && isAidVisible(questionId, "AI_ASSIST");
+  const aiHintExists = !!aiAid?.hint;
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-white p-4">
@@ -137,21 +145,81 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
           <Button
             variant="secondary"
             onClick={() => onToggleAid("AI_ASSIST")}
-            disabled={!aiAid.available || aiAid.loading}
+            disabled={(!aiAid.available && !aiHintExists) || aiAid.loading}
             title={!aiAid.available ? aiAid.disabledReason ?? undefined : undefined}
           >
             {aiAid.loading
               ? "Generando ayuda..."
-              : aiVisible
-                ? "Ocultar Ayuda IA"
-                : "Pedir Ayuda IA"}
+              : aiHintExists
+                ? "Ver ayuda generada"
+                : "Generar ayuda IA"}
           </Button>
           {aiAid.error && !aiAid.loading && (
             <p className="text-xs text-destructive">{aiAid.error}</p>
           )}
-          {aiVisible && aiAid.hint && <RenderHelp text={aiAid.hint} />}
+          {aiHintExists && (
+            <p className="text-xs text-muted-foreground">
+              Ya generaste una ayuda para esta pregunta en este intento. Puedes volver a abrirla cuando quieras.
+            </p>
+          )}
+          <AiAidModal
+            open={aiVisible && aiHintExists}
+            hint={aiAid.hint ?? ""}
+            onClose={() => onToggleAid("AI_ASSIST")}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+type AiAidModalProps = {
+  open: boolean;
+  hint: string;
+  onClose: () => void;
+};
+
+function AiAidModal({ open, hint, onClose }: AiAidModalProps) {
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Problema generado por IA"
+        className="relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">Ayuda IA</p>
+            <h3 className="text-lg font-bold text-foreground">Problema contextual generado</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-muted-foreground transition hover:bg-secondary"
+            aria-label="Cerrar ayuda IA"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="max-h-[75vh] overflow-y-auto px-6 pb-6 pt-4">
+          <RenderHelp text={hint} variant="bare" />
+        </div>
+      </div>
     </div>
   );
 }
