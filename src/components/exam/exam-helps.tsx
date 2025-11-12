@@ -47,7 +47,28 @@ function normalizeMathDelimiters(md: string): string {
     return `$${inner}$`;
   });
 
-  return inlineNormalized;
+  return autoFormatPlainMath(inlineNormalized);
+}
+
+function autoFormatPlainMath(md: string): string {
+  let output = md;
+
+  // sqrt(...) -> $\\sqrt{...}$
+  output = output.replace(/(?<!\$)sqrt\(([^()]+)\)(?!\$)/gi, (_match, expr) => {
+    return `$\\sqrt{${expr.trim()}}$`;
+  });
+
+  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$
+  output = output.replace(/(?<![\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g, (_match, base, exp) => {
+    return `$${base}^{${exp}}$`;
+  });
+
+  // Fractions like (a/b) -> $\frac{a}{b}$
+  output = output.replace(/(?<!\$)\((\s*[A-Za-z0-9.+-]+)\s*\/\s*([A-Za-z0-9.+-]+)\s*\)(?!\$)/g, (_match, top, bottom) => {
+    return `$\\frac{${top.trim()}}{${bottom.trim()}}$`;
+  });
+
+  return output;
 }
 
 function RenderHelp({ text, variant = "card" }: { text: string; variant?: "card" | "bare" }) {

@@ -57,6 +57,7 @@ function buildPrompt(params: {
     "- Relaciona el nuevo problema con la misma competencia o tema del ejercicio original.",
     "- La resolución debe ser clara, sin rodeos y sin exceder los 6 pasos.",
     "- No reveles la opción correcta fuera de la sección de resolución.",
+    "- Expresa toda la notación matemática usando LaTeX entre $...$ (por ejemplo $\\sqrt{a^2 + b^2}$, $3.5^{2}$, $\\frac{a}{b}$).",
     "",
     "Datos del ejercicio original para inspirarte:",
     ...summaryLines,
