@@ -74,6 +74,20 @@ function autoFormatPlainMath(md: string): string {
     return `$\\frac{${top.trim()}}{${bottom.trim()}}$`;
   });
 
+  // Normalize $$...$$ blocks: convert inline doubles to inline singles, multiline to proper blocks
+  output = output.replace(/\$\$([^$]+)\$\$/g, (_match, expr) => {
+    const trimmed = expr.trim();
+    if (trimmed.includes("\n")) {
+      return `\n\n$$\n${trimmed}\n$$\n\n`;
+    }
+    return "$" + trimmed + "$";
+  });
+
+  // Close stray '$$expr' without trailing $$
+  output = output.replace(/\$\$([^\n$]+)(?=$|\n)/g, (_match, expr) => {
+    return "$" + expr.trim() + "$";
+  });
+
   return output;
 }
 
