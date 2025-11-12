@@ -17,6 +17,7 @@ type AiAidProps = {
   loading: boolean;
   hint: string | null;
   error: string | null;
+  alreadyGenerated?: boolean;
 };
 
 type Props = {
@@ -58,9 +59,14 @@ function autoFormatPlainMath(md: string): string {
     return `$\\sqrt{${expr.trim()}}$`;
   });
 
-  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$
-  output = output.replace(/(?<![\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g, (_match, base, exp) => {
-    return `$${base}^{${exp}}$`;
+  // Wrap existing \sqrt{...} outside $...$
+  output = wrapLatexCommandOutsideInlineMath(output, /\\sqrt\{[^}]+\}/g);
+  // Wrap existing \frac{...}{...} outside $...$
+  output = wrapLatexCommandOutsideInlineMath(output, /\\frac\{[^}]+\}\{[^}]+\}/g);
+
+  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$ when not already inside braces from LaTeX commands
+  output = output.replace(/(^|[^\\{}\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g, (_match, prefix, base, exp) => {
+    return `${prefix}$${base}^{${exp}}$`;
   });
 
   // Fractions like (a/b) -> $\frac{a}{b}$
@@ -69,6 +75,39 @@ function autoFormatPlainMath(md: string): string {
   });
 
   return output;
+}
+
+function wrapLatexCommandOutsideInlineMath(text: string, regex: RegExp) {
+  return text.replace(regex, (...args) => {
+    const match = args[0] as string;
+    const offset = args[args.length - 2] as number;
+    const source = args[args.length - 1] as string;
+    if (isInsideInlineMath(source, offset, match.length)) {
+      return match;
+    }
+    return `$${match}$`;
+  });
+}
+
+function isInsideInlineMath(source: string, start: number, length: number) {
+  const prevChar = source[start - 1] ?? "";
+  const nextChar = source[start + length] ?? "";
+
+  // Detect $...$ or $$...$$ just by immediate neighbors
+  const prevIsDollar = prevChar === "$";
+  const nextIsDollar = nextChar === "$";
+
+  if (prevIsDollar && nextIsDollar) {
+    return true;
+  }
+
+  const prevTwo = source.slice(Math.max(0, start - 2), start);
+  const nextTwo = source.slice(start + length, start + length + 2);
+  if (prevTwo === "$$" || nextTwo === "$$") {
+    return true;
+  }
+
+  return false;
 }
 
 function RenderHelp({ text, variant = "card" }: { text: string; variant?: "card" | "bare" }) {
@@ -130,6 +169,7 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
   const show2 = !!help2Md && isAidVisible(questionId, "AID2");
   const aiVisible = !!aiAid?.hint && isAidVisible(questionId, "AI_ASSIST");
   const aiHintExists = !!aiAid?.hint;
+  const aiAlreadyGenerated = !!aiAid?.alreadyGenerated;
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-white p-4">
@@ -166,19 +206,19 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
           <Button
             variant="secondary"
             onClick={() => onToggleAid("AI_ASSIST")}
-            disabled={(!aiAid.available && !aiHintExists) || aiAid.loading}
+            disabled={(!aiAid.available && !aiAlreadyGenerated) || aiAid.loading}
             title={!aiAid.available ? aiAid.disabledReason ?? undefined : undefined}
           >
             {aiAid.loading
               ? "Generando ayuda..."
-              : aiHintExists
+              : aiHintExists || aiAlreadyGenerated
                 ? "Ver ayuda generada"
                 : "Generar ayuda IA"}
           </Button>
           {aiAid.error && !aiAid.loading && (
             <p className="text-xs text-destructive">{aiAid.error}</p>
           )}
-          {aiHintExists && (
+          {(aiHintExists || aiAlreadyGenerated) && (
             <p className="text-xs text-muted-foreground">
               Ya generaste una ayuda para esta pregunta en este intento. Puedes volver a abrirla cuando quieras.
             </p>

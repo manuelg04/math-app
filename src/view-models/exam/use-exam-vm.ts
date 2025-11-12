@@ -764,6 +764,10 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
   };
 
   const isAidVisible = (qId: string, key: AidKey) => !!visibleAids[qId]?.has(key);
+  const hasLoggedAid = React.useCallback(
+    (qId: string, key: AidKey) => !!loggedAids[qId]?.has(key),
+    [loggedAids]
+  );
 
   const answeredCount = answers.size;
   const isLastQuestion = currentIndex === examData.questions.length - 1;
@@ -787,6 +791,7 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     handleTimeUpdate,
     toggleAid,
     isAidVisible,
+    hasUsedAid: hasLoggedAid,
     MAX_SECONDS,
     timeOver,
     timeSpent: timeSnapshot,
@@ -796,6 +801,8 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
       loading: currentAiAid?.loading ?? false,
       hint: currentAiAid?.hint ?? null,
       error: currentAiAid?.error ?? null,
+      alreadyGenerated:
+        !!currentQuestion && hasLoggedAid(currentQuestion.id, "AI_ASSIST"),
     },
   };
 }
