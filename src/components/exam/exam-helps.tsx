@@ -135,7 +135,7 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
             )}
           </div>
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => onToggleAid("AI_ASSIST")}
             disabled={!aiAid.available || aiAid.loading}
             title={!aiAid.available ? aiAid.disabledReason ?? undefined : undefined}
