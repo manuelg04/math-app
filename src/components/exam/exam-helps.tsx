@@ -29,12 +29,6 @@ type Props = {
   aiAid?: AiAidProps;
 };
 
-/**
- * Normaliza delimitadores LaTeX:
- *  - \[ ... \]  -> $$ ... $$
- *  - \( ... \)  -> $ ... $
- * Soporta bloques multilínea.
- */
 function normalizeMathDelimiters(md: string): string {
   if (!md) return md;
 
@@ -51,32 +45,115 @@ function normalizeMathDelimiters(md: string): string {
   return autoFormatPlainMath(inlineNormalized);
 }
 
+type MathSpan = {
+  start: number;
+  end: number;
+};
+
+function findMathSpans(source: string): MathSpan[] {
+  const spans: MathSpan[] = [];
+  const stack: { delimiter: "$" | "$$"; index: number }[] = [];
+  let i = 0;
+
+  while (i < source.length) {
+    if (source[i] === "$" && source[i - 1] !== "\\") {
+      const isDouble = source[i + 1] === "$";
+      const delimiter: "$" | "$$" = isDouble ? "$$" : "$";
+      const length = isDouble ? 2 : 1;
+
+      const top = stack[stack.length - 1];
+      if (top && top.delimiter === delimiter) {
+        spans.push({
+          start: top.index,
+          end: i + length,
+        });
+        stack.pop();
+      } else {
+        stack.push({ delimiter, index: i });
+      }
+
+      i += length;
+      continue;
+    }
+
+    i += 1;
+  }
+
+  return spans;
+}
+
+function isInsideMathSpan(spans: MathSpan[], start: number, length: number): boolean {
+  const end = start + length;
+  return spans.some((span) => start >= span.start && end <= span.end);
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function replaceOutsideMath(
+  text: string,
+  regex: RegExp,
+  replacer: (...args: any[]) => string
+): string {
+  const spans = findMathSpans(text);
+
+  return text.replace(regex, (...args: Parameters<typeof replacer>) => {
+    const match = args[0] as string;
+    const offset = args[args.length - 2] as number;
+
+    if (isInsideMathSpan(spans, offset, match.length)) {
+      // Dentro de una región matemática: no tocamos nada
+      return match;
+    }
+
+    return replacer(...args);
+  });
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+}
+
+
+function wrapLatexCommandOutsideInlineMath(text: string, regex: RegExp): string {
+  return replaceOutsideMath(text, regex, (match: string) => {
+    return `$${match}$`;
+  });
+}
+
 function autoFormatPlainMath(md: string): string {
   let output = md;
 
-  // sqrt(...) -> $\\sqrt{...}$
-  output = output.replace(/(?<!\$)sqrt\(([^()]+)\)(?!\$)/gi, (_match, expr) => {
-    return `$\\sqrt{${expr.trim()}}$`;
-  });
+  // sqrt(...) -> $\\sqrt{...}$ cuando está fuera de $...$ y no es ya \\sqrt
+  output = replaceOutsideMath(
+    output,
+    /(?<![\\\$])sqrt\(([^()]+)\)(?!\$)/gi,
+    (_match: string, expr: string) => {
+      return `$\\sqrt{${expr.trim()}}$`;
+    }
+  );
 
-  // Wrap existing \sqrt{...} outside $...$
+  // Wrap existing \sqrt{...}, \frac{...}{...}, \bar{...} outside $...$
   output = wrapLatexCommandOutsideInlineMath(output, /\\sqrt\{[^}]+\}/g);
-  // Wrap existing \frac{...}{...} outside $...$
   output = wrapLatexCommandOutsideInlineMath(output, /\\frac\{[^}]+\}\{[^}]+\}/g);
+  output = wrapLatexCommandOutsideInlineMath(output, /\\bar\{[^}]+\}/g);
 
-  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$ when not already inside braces from LaTeX commands
-  output = output.replace(/(^|[^\\{}\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g, (_match, prefix, base, exp) => {
-    return `${prefix}$${base}^{${exp}}$`;
-  });
+  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$ when not already inside math
+  output = replaceOutsideMath(
+    output,
+    /(^|[^\\{}\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g,
+    (_match: string, prefix: string, base: string, exp: string) => {
+      return `${prefix}$${base}^{${exp}}$`;
+    }
+  );
 
-  // Fractions like (a/b) -> $\frac{a}{b}$
-  output = output.replace(/(?<!\$)\((\s*[A-Za-z0-9.+-]+)\s*\/\s*([A-Za-z0-9.+-]+)\s*\)(?!\$)/g, (_match, top, bottom) => {
-    return `$\\frac{${top.trim()}}{${bottom.trim()}}$`;
-  });
+  // Fractions like (a/b) -> $\frac{a}{b}$, only when outside math
+  output = replaceOutsideMath(
+    output,
+    /(?<!\$)\((\s*[A-Za-z0-9.+-]+)\s*\/\s*([A-Za-z0-9.+-]+)\s*\)(?!\$)/g,
+    (_match: string, top: string, bottom: string) => {
+      return `$\\frac{${top.trim()}}{${bottom.trim()}}$`;
+    }
+  );
 
   // Normalize $$...$$ blocks: convert inline doubles to inline singles, multiline to proper blocks
   output = output.replace(/\$\$([^$]+)\$\$/g, (_match, expr) => {
-    const trimmed = expr.trim();
+    const trimmed = String(expr).trim();
     if (trimmed.includes("\n")) {
       return `\n\n$$\n${trimmed}\n$$\n\n`;
     }
@@ -85,43 +162,10 @@ function autoFormatPlainMath(md: string): string {
 
   // Close stray '$$expr' without trailing $$
   output = output.replace(/\$\$([^\n$]+)(?=$|\n)/g, (_match, expr) => {
-    return "$" + expr.trim() + "$";
+    return "$" + String(expr).trim() + "$";
   });
 
   return output;
-}
-
-function wrapLatexCommandOutsideInlineMath(text: string, regex: RegExp) {
-  return text.replace(regex, (...args) => {
-    const match = args[0] as string;
-    const offset = args[args.length - 2] as number;
-    const source = args[args.length - 1] as string;
-    if (isInsideInlineMath(source, offset, match.length)) {
-      return match;
-    }
-    return `$${match}$`;
-  });
-}
-
-function isInsideInlineMath(source: string, start: number, length: number) {
-  const prevChar = source[start - 1] ?? "";
-  const nextChar = source[start + length] ?? "";
-
-  // Detect $...$ or $$...$$ just by immediate neighbors
-  const prevIsDollar = prevChar === "$";
-  const nextIsDollar = nextChar === "$";
-
-  if (prevIsDollar && nextIsDollar) {
-    return true;
-  }
-
-  const prevTwo = source.slice(Math.max(0, start - 2), start);
-  const nextTwo = source.slice(start + length, start + length + 2);
-  if (prevTwo === "$$" || nextTwo === "$$") {
-    return true;
-  }
-
-  return false;
 }
 
 function RenderHelp({ text, variant = "card" }: { text: string; variant?: "card" | "bare" }) {
@@ -234,7 +278,8 @@ export function ExamHelps({ questionId, help1Md, help2Md, onToggleAid, isAidVisi
           )}
           {(aiHintExists || aiAlreadyGenerated) && (
             <p className="text-xs text-muted-foreground">
-              Ya generaste una ayuda para esta pregunta en este intento. Puedes volver a abrirla cuando quieras.
+              Ya generaste una ayuda para esta pregunta en este intento. Puedes volver a abrirla cuando
+              quieras.
             </p>
           )}
           <AiAidModal
