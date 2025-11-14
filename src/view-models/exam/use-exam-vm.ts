@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { DASHBOARD_REFRESH_FLAG } from "@/lib/constants";
 
 type Choice = {
   id: string;
@@ -514,6 +515,9 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
         skipAutoStartRef.current = true;
         setAttemptId(null);
         localStorage.removeItem(storageKey);
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(DASHBOARD_REFRESH_FLAG, "true");
+        }
         router.push(`/dashboard/exams/${examData.slug}/results/${finishedAttemptId}`);
       } else {
         throw new Error(result.message || result.error || "Error al enviar el examen");

@@ -43,7 +43,7 @@ export function TrainingCompletionModal({
             Continuar entrenamiento
           </Button>
           <Button type="button" onClick={onGoToDashboard} className="flex-1">
-            Ir al dashboard
+            Ir al menu principal
           </Button>
         </div>
       </div>

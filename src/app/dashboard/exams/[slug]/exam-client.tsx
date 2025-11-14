@@ -7,9 +7,11 @@ import { ExamNavigation } from "@/components/exam/exam-navigation";
 import { ExamTimer } from "@/components/exam/exam-timer";
 import { ExamProgress } from "@/components/exam/exam-progress";
 import { ExamHelps } from "@/components/exam/exam-helps";
+import { Button } from "@/components/ui/button";
 import { useExamViewModel } from "@/view-models/exam/use-exam-vm";
 import { TrainingCompletionModal } from "@/components/exam/training-completion-modal";
 import { useRouter } from "next/navigation";
+import { DASHBOARD_REFRESH_FLAG } from "@/lib/constants";
 
 type AttemptKindValue = "GENERIC" | "ENTRY" | "TRAINING" | "EXIT";
 
@@ -96,6 +98,7 @@ function useLockViewportScroll() {
 export function ExamClient({ examData, context }: ExamClientProps) {
   const router = useRouter();
   const { trainingPlan, attemptKind } = context;
+  const showOptionalHelps = attemptKind === "TRAINING";
   const vm = useExamViewModel(examData, attemptKind);
   const {
     currentQuestion,
@@ -169,6 +172,9 @@ export function ExamClient({ examData, context }: ExamClientProps) {
   ]);
 
   const handleGoToDashboard = React.useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(DASHBOARD_REFRESH_FLAG, "true");
+    }
     router.push("/dashboard");
   }, [router]);
 
@@ -197,30 +203,40 @@ export function ExamClient({ examData, context }: ExamClientProps) {
       {/* Header fijo (no necesita sticky porque el scroll es interno) */}
       <header className="flex-shrink-0 border-b border-border bg-white">
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-foreground">{examData.title}</h1>
-                {examData.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">{examData.description}</p>
-                )}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{examData.title}</h1>
+              {examData.description && (
+                <p className="mt-1 text-sm text-muted-foreground">{examData.description}</p>
+              )}
               {trainingPlan && attemptKind !== "ENTRY" && (
                 <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
                   Plan {trainingPlan.code} • {trainingPlan.answeredCount} / {trainingPlan.minRequiredToUnlockExit} preguntas para desbloquear salida • {trainingPlan.totalQuestions} totales
                 </p>
               )}
             </div>
-            {attemptKind === "TRAINING" ? (
-              <div className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground">
-                Entrenamiento sin límite de tiempo
-              </div>
-            ) : (
-              <ExamTimer
-                initialSeconds={timeSpent}
-                limitSeconds={MAX_SECONDS}
-                onTimeUpdate={handleTimeUpdate}
-                onTimeOver={handleSubmit}
-              />
-            )}
+            <div className="flex flex-col items-stretch gap-3 sm:items-end sm:text-right">
+              {attemptKind === "TRAINING" ? (
+                <div className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground">
+                  Entrenamiento sin límite de tiempo
+                </div>
+              ) : (
+                <ExamTimer
+                  initialSeconds={timeSpent}
+                  limitSeconds={MAX_SECONDS}
+                  onTimeUpdate={handleTimeUpdate}
+                  onTimeOver={handleSubmit}
+                />
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full sm:w-auto text-sm py-2"
+                onClick={handleGoToDashboard}
+              >
+                Ir al menú principal
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -237,14 +253,16 @@ export function ExamClient({ examData, context }: ExamClientProps) {
               prompt={currentQuestion.prompt}
             />
 
-            <ExamHelps
-              questionId={currentQuestion.id}
-              help1Md={currentQuestion.help1Md}
-              help2Md={currentQuestion.help2Md}
-              onToggleAid={(k) => toggleAid(k)}
-              isAidVisible={isAidVisible}
-              aiAid={aiAid}
-            />
+            {showOptionalHelps && (
+              <ExamHelps
+                questionId={currentQuestion.id}
+                help1Md={currentQuestion.help1Md}
+                help2Md={currentQuestion.help2Md}
+                onToggleAid={(k) => toggleAid(k)}
+                isAidVisible={isAidVisible}
+                aiAid={aiAid}
+              />
+            )}
 
             <ExamOptions
               options={currentQuestion.choices}

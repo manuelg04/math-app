@@ -94,7 +94,10 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
       );
     }
 
-    const label = entry.status === "IN_PROGRESS" || entryActive ? "Continuar entrenamiento" : "Iniciar entrenamiento";
+    const label =
+      entry.status === "IN_PROGRESS" || entryActive
+        ? "Continuar prueba de entrada"
+        : "Iniciar prueba de entrada";
     return (
       <Link href={`/dashboard/exams/${entry.slug}`} className="mt-4 block">
         <Button className="w-full">{label}</Button>
@@ -275,9 +278,26 @@ export function DashboardClient({ initialData }: { initialData: DashboardData })
               </div>
               <StatusBadge label={trainingStatusLabel} />
             </div>
-            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span>📊 {formatQuestionCount(training.questionCount)}</span>
-              <span>🛠️ Plan personalizado</span>
+              <div className="flex items-center gap-2">
+                <span>🛠️ Plan personalizado</span>
+                {training.trainingPlan && (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      training.trainingPlan.unlockedExit
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {training.trainingPlan.unlockedExit
+                      ? "Salida desbloqueada"
+                      : training.trainingPlan.remainingToUnlockExit === 1
+                      ? "Falta 1 respuesta para la salida"
+                      : `Faltan ${training.trainingPlan.remainingToUnlockExit} respuestas para la salida`}
+                  </span>
+                )}
+              </div>
             </div>
             {renderTrainingButton()}
           </div>

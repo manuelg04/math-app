@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { DASHBOARD_REFRESH_FLAG } from "@/lib/constants";
 
 type TrainingPlanSummary = {
   id: string;
@@ -76,6 +77,14 @@ export function useDashboardViewModel(initialData: DashboardData) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const needsRefresh = window.sessionStorage.getItem(DASHBOARD_REFRESH_FLAG);
+    if (!needsRefresh) return;
+    window.sessionStorage.removeItem(DASHBOARD_REFRESH_FLAG);
+    router.refresh();
+  }, [router]);
 
   const handleLogout = React.useCallback(async () => {
     setLoading(true);
