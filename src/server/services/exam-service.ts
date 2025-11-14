@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AttemptKind } from "@prisma/client";
+import { TrainingPlanSummary } from "@/types/dashboard";
+import { getTrainingPlanSummary } from "./training-plan-service";
 
 export type ExamWithQuestions = {
   id: string;
@@ -27,17 +29,7 @@ export type ExamWithQuestions = {
   }>;
 };
 
-type TrainingPlanContext = {
-  id: string;
-  code: string;
-  title: string | null;
-  description: string | null;
-  minRequiredToUnlockExit: number;
-  totalQuestions: number;
-  answeredCount: number;
-  remainingToUnlockExit: number;
-  unlockedExit: boolean;
-};
+type TrainingPlanContext = TrainingPlanSummary;
 
 type UserExamSuccess = {
   success: true;
@@ -104,63 +96,6 @@ async function fetchExamWithQuestionsBySlug(slug: string): Promise<ExamWithQuest
   }
 
   return exam as ExamWithQuestions;
-}
-
-async function getTrainingPlanContext(
-  userId: string,
-  trainingPlanId: string
-): Promise<TrainingPlanContext | null> {
-  const trainingPlan = await prisma.trainingPlan.findUnique({
-    where: { id: trainingPlanId, isActive: true },
-    select: {
-      id: true,
-      code: true,
-      title: true,
-      description: true,
-      minRequiredToUnlockExit: true,
-    },
-  });
-
-  if (!trainingPlan) {
-    return null;
-  }
-
-  const planQuestions = await prisma.planQuestion.findMany({
-    where: { trainingPlanId },
-    select: { questionId: true },
-  });
-
-  const questionIds = planQuestions.map((pq) => pq.questionId);
-  const totalQuestions = questionIds.length;
-
-  const answered = questionIds.length
-    ? await prisma.examResponse.findMany({
-        where: {
-          questionId: { in: questionIds },
-          attempt: {
-            userId,
-            kind: AttemptKind.TRAINING,
-            trainingPlanId,
-          },
-        },
-        select: { questionId: true },
-        distinct: ["questionId"],
-      })
-    : [];
-
-  const answeredCount = answered.length;
-  const remainingToUnlockExit = Math.max(
-    trainingPlan.minRequiredToUnlockExit - answeredCount,
-    0
-  );
-
-  return {
-    ...trainingPlan,
-    totalQuestions,
-    answeredCount,
-    remainingToUnlockExit,
-    unlockedExit: answeredCount >= trainingPlan.minRequiredToUnlockExit,
-  };
 }
 
 async function getTrainingExamQuestions(trainingPlanId: string): Promise<ExamWithQuestions["questions"]> {
@@ -264,7 +199,7 @@ export async function getExamForUser(
       };
     }
 
-    const trainingPlanContext = await getTrainingPlanContext(userId, placement.trainingPlanId);
+    const trainingPlanContext = await getTrainingPlanSummary(userId, placement.trainingPlanId);
     if (!trainingPlanContext) {
       return {
         success: false,
@@ -310,7 +245,7 @@ export async function getExamForUser(
       };
     }
 
-    const trainingPlanContext = await getTrainingPlanContext(userId, placement.trainingPlanId);
+    const trainingPlanContext = await getTrainingPlanSummary(userId, placement.trainingPlanId);
     if (!trainingPlanContext) {
       return {
         success: false,

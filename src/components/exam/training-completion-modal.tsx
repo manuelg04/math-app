@@ -31,7 +31,7 @@ export function TrainingCompletionModal({
         </div>
         <h2 className="mt-4 text-2xl font-bold text-foreground">¡Mínimo completado!</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ya respondiste el mínimo de preguntas requeridas para tu plan. La Prueba de salida quedó habilitada, puedes ir al dashboard o seguir practicando.
+          Ya respondiste el mínimo de preguntas requeridas para tu plan. La Prueba de salida quedó habilitada, puedes ir al dashboard o seguir entrenando.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Button
