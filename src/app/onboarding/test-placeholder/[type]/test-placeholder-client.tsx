@@ -16,7 +16,6 @@ interface TestPlaceholderProps {
 }
 
 export function TestPlaceholder({
-  testName,
   userName,
   examId,
   examSlug,
@@ -98,7 +97,7 @@ export function TestPlaceholder({
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10 p-6">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Prueba de entrada - {testName}</CardTitle>
+          <CardTitle className="text-2xl">Prueba de entrada</CardTitle>
           <CardDescription className="text-lg">
             Hola {userName}, esta evaluación inicial define tu punto de partida dentro de la plataforma.
           </CardDescription>
