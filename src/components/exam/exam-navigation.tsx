@@ -12,7 +12,7 @@ type ExamNavigationProps = {
   canGoNext: boolean;
   isLastQuestion: boolean;
   hasAnswered: boolean;
-  disabled?: boolean; // bloquea todo (por tiempo agotado)
+  disabled?: boolean; // bloquea todo (por tiemo agotado)
 };
 
 export function ExamNavigation({

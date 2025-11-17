@@ -31,17 +31,12 @@ type Props = {
 
 function normalizeMathDelimiters(md: string): string {
   if (!md) return md;
-
-  // Bloques: \[ ... \]  (multilínea)
   const blocksNormalized = md.replace(/\\\[((?:.|\n)*?)\\\]/g, (_m, inner) => {
     return `\n\n$$\n${inner}\n$$\n\n`;
   });
-
-  // Inline: \( ... \)
   const inlineNormalized = blocksNormalized.replace(/\\\((.+?)\\\)/g, (_m, inner) => {
     return `$${inner}$`;
   });
-
   return autoFormatPlainMath(inlineNormalized);
 }
 
@@ -100,7 +95,6 @@ function replaceOutsideMath(
     const offset = args[args.length - 2] as number;
 
     if (isInsideMathSpan(spans, offset, match.length)) {
-      // Dentro de una región matemática: no tocamos nada
       return match;
     }
 
@@ -118,8 +112,6 @@ function wrapLatexCommandOutsideInlineMath(text: string, regex: RegExp): string 
 
 function autoFormatPlainMath(md: string): string {
   let output = md;
-
-  // sqrt(...) -> $\\sqrt{...}$ cuando está fuera de $...$ y no es ya \\sqrt
   output = replaceOutsideMath(
     output,
     /(?<![\\\$])sqrt\(([^()]+)\)(?!\$)/gi,
@@ -127,13 +119,9 @@ function autoFormatPlainMath(md: string): string {
       return `$\\sqrt{${expr.trim()}}$`;
     }
   );
-
-  // Wrap existing \sqrt{...}, \frac{...}{...}, \bar{...} outside $...$
   output = wrapLatexCommandOutsideInlineMath(output, /\\sqrt\{[^}]+\}/g);
   output = wrapLatexCommandOutsideInlineMath(output, /\\frac\{[^}]+\}\{[^}]+\}/g);
   output = wrapLatexCommandOutsideInlineMath(output, /\\bar\{[^}]+\}/g);
-
-  // Simple exponents like x^2 or 3.5^2 -> $x^{2}$ when not already inside math
   output = replaceOutsideMath(
     output,
     /(^|[^\\{}\w\$])([A-Za-z0-9.]+)\^([0-9]{1,2})(?![\w\$])/g,
@@ -141,8 +129,6 @@ function autoFormatPlainMath(md: string): string {
       return `${prefix}$${base}^{${exp}}$`;
     }
   );
-
-  // Fractions like (a/b) -> $\frac{a}{b}$, only when outside math
   output = replaceOutsideMath(
     output,
     /(?<!\$)\((\s*[A-Za-z0-9.+-]+)\s*\/\s*([A-Za-z0-9.+-]+)\s*\)(?!\$)/g,
@@ -150,8 +136,6 @@ function autoFormatPlainMath(md: string): string {
       return `$\\frac{${top.trim()}}{${bottom.trim()}}$`;
     }
   );
-
-  // Normalize $$...$$ blocks: convert inline doubles to inline singles, multiline to proper blocks
   output = output.replace(/\$\$([^$]+)\$\$/g, (_match, expr) => {
     const trimmed = String(expr).trim();
     if (trimmed.includes("\n")) {
@@ -159,8 +143,6 @@ function autoFormatPlainMath(md: string): string {
     }
     return "$" + trimmed + "$";
   });
-
-  // Close stray '$$expr' without trailing $$
   output = output.replace(/\$\$([^\n$]+)(?=$|\n)/g, (_match, expr) => {
     return "$" + String(expr).trim() + "$";
   });

@@ -22,10 +22,8 @@ type ExamOptionsProps = {
   disabled?: boolean;
 };
 
-// Detecta si el texto contiene una tabla GFM (líneas con | y separadores ---)
 function containsMarkdownTable(text: string): boolean {
   if (!text) return false;
-  // Header con pipes y una línea siguiente con separadores |---|
   const tablePattern = /(^|\n)\s*\|.+\|\s*(\n\|[ :\-|]+)+/m;
   return tablePattern.test(text);
 }
@@ -99,7 +97,7 @@ export function ExamOptions({
 
                   {/* Contenido de la opción */}
                   {option.imageUrl ? (
-                    // Si hay imageUrl, renderizar la imagen
+                   
                     <div className="mt-2">
                       <img
                         src={option.imageUrl}
@@ -156,7 +154,6 @@ export function ExamOptions({
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    // Para texto simple, renderizamos Markdown en línea (p => span)
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm, remarkMath]}
                       rehypePlugins={[rehypeKatex]}

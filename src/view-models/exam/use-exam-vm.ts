@@ -79,7 +79,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
   const [loading, setLoading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // ayudas visibles por pregunta y registro de ayudas notificadas
   const [visibleAids, setVisibleAids] = React.useState<Record<string, Set<AidKey>>>({});
   const [loggedAids, setLoggedAids] = React.useState<Record<string, Set<AidKey>>>({});
   const [aiAidState, setAiAidState] = React.useState<
@@ -93,7 +92,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
   );
   const persistTimeoutRef = React.useRef<number | null>(null);
 
-  // Control de peticiones de respuesta por pregunta (evitar carreras)
   const answerControllersRef = React.useRef<Record<string, AbortController | null>>({});
   const skipAutoStartRef = React.useRef(false);
   const pendingRestoreRef = React.useRef<LocalStorageData | null>(null);
@@ -195,7 +193,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     setLoggedAids({});
   }, []);
 
-  // Cargar de localStorage (solo una vez)
   const [initialLoadDone, setInitialLoadDone] = React.useState(false);
 
   React.useEffect(() => {
@@ -223,7 +220,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     setInitialLoadDone(true);
   }, [storageKey, hydrateFromLocalData]);
 
-  // Serialización para localStorage
   const serializeAidState = React.useCallback(
     (state: Record<string, Set<AidKey>>): Record<string, AidKey[]> => {
       const result: Record<string, AidKey[]> = {};
@@ -286,7 +282,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     };
   }, [persistExamState]);
 
-  // Persistir también en beforeunload/pagehide (cierre o navegación abrupta)
   React.useEffect(() => {
     const handler = () => {
       try {
@@ -334,7 +329,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
       return;
     }
 
-    // Crear attempt si no existe
     (async () => {
       try {
         const resp = await fetch("/api/exams/attempts/start", {
@@ -386,7 +380,6 @@ export function useExamViewModel(examData: ExamData, attemptKind: AttemptKindVal
     consumePendingRestore,
   ]);
 
-  // Pregunta y selección actual (normalizada a null)
   const currentQuestion = examData.questions[currentIndex];
 
   const questionHasMedia = React.useCallback((question: Question | null) => {

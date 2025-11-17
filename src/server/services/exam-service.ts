@@ -324,7 +324,6 @@ export async function listActiveExams() {
   });
 }
 
-// Verificar si el usuario tiene un examen activo diferente al especificado
 export async function checkActiveExam(userId: string, excludeExamId?: string) {
   const activeAttempt = await prisma.examAttempt.findFirst({
     where: {

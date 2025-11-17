@@ -17,7 +17,6 @@ type ExamQuestionProps = {
 
 function sanitizePrompt(input: string): string {
   if (!input) return input;
-  // Solo elimina placeholders tipo [image: ...] o [imagen: ...] si llegaran a existir.
   const removeImageMeta = input.replace(/\[(imagen|image):[^\]]*\]/gi, "");
   return removeImageMeta.trim();
 }
