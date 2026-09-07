@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import {
   Compass,
   BookOpen,
   ChartNoAxesCombined,
+  X,
 } from "lucide-react";
 import { api } from "@convex/_generated/api";
 import { AppShell } from "./app-shell";
@@ -46,17 +48,22 @@ function Overview({ name }: { name: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [preflight, setPreflight] = useState<"ENTRY" | "EXIT" | null>(null);
+  const starting = useRef(false);
   if (!data) return <Loading />;
   const { active, entry, exit, plan } = data;
   const entryDone = entry && entry.state !== "IN_PROGRESS";
   const exitReady = !!plan && plan.answered >= plan.minimum;
   async function begin(kind: "ENTRY" | "TRAINING" | "EXIT") {
+    if (starting.current) return;
+    starting.current = true;
     setBusy(kind);
     setError("");
     try {
       const id = await start({ kind });
       router.push(`/dashboard/exams/${id}`);
     } catch (e) {
+      starting.current = false;
       setError(message(e));
       setBusy("");
     }
@@ -186,7 +193,11 @@ function Overview({ name }: { name: string }) {
                   disabled={
                     !enabled || !!active || !!busy || !data.catalogReady
                   }
-                  onClick={() => begin(kind)}
+                  onClick={() => {
+                    setError("");
+                    if (kind === "TRAINING") void begin(kind);
+                    else setPreflight(kind);
+                  }}
                 >
                   {busy === kind
                     ? "Abriendo…"
@@ -200,6 +211,72 @@ function Overview({ name }: { name: string }) {
           ),
         )}
       </section>
+      <Dialog.Root
+        open={preflight !== null}
+        onOpenChange={(open) => {
+          if (!open && !starting.current) setPreflight(null);
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="dialog-content">
+            <Dialog.Title>
+              {preflight === "EXIT" ? "Prueba de salida" : "Prueba de entrada"}
+            </Dialog.Title>
+            <Dialog.Description>
+              Busca un lugar tranquilo. El tiempo comienza cuando confirmes que
+              quieres iniciar.
+            </Dialog.Description>
+            <ul className="assessment-instructions">
+              <li>35 preguntas · 60 minutos · Un solo intento.</li>
+              <li>
+                El reloj sigue corriendo aunque cierres la página o salgas.
+              </li>
+              <li>
+                Puedes revisar y cambiar tus respuestas antes de finalizar.
+              </li>
+              <li>
+                Cada respuesta se guarda automáticamente. Comprueba que diga
+                «Guardado» antes de salir.
+              </li>
+              <li>
+                No hay ayudas durante la prueba. Las preguntas sin responder
+                cuentan como incorrectas.
+              </li>
+              <li>
+                Al agotarse el tiempo, la prueba se finaliza automáticamente.
+              </li>
+            </ul>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <Dialog.Close asChild>
+                <Button variant="secondary" disabled={!!busy}>
+                  Ahora no
+                </Button>
+              </Dialog.Close>
+              <Button
+                disabled={!!busy || !!active}
+                onClick={() => {
+                  if (preflight) void begin(preflight);
+                }}
+              >
+                {busy ? "Abriendo…" : "Entendido, comenzar"}
+              </Button>
+            </div>
+            <Dialog.Close
+              className="dialog-close"
+              aria-label="Cerrar"
+              disabled={!!busy}
+            >
+              <X size={20} />
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       {plan && (
         <section className="plan-panel">
           <div>

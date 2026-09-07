@@ -75,12 +75,30 @@ function Workspace({
   const [finishing, setFinishing] = useState(false);
   const [help, setHelp] = useState(false);
   const lock = useRef(false);
+  const questionMain = useRef<HTMLElement>(null);
+  const reviewJump = useRef(false);
   const save = useMutation(api.exams.answer);
   const submit = useMutation(api.exams.submit);
   const questionId = attempt.questionIds[index];
   const question = useQuery(api.exams.question, { id: attempt.id, questionId });
   const answer = answers.find((a) => a.questionId === questionId);
   const storageKey = `rq-answer-v1:${account}:${attempt.id}`;
+  const positionKey = `rq-position-v1:${account}:${attempt.id}`;
+  useEffect(() => {
+    try {
+      const savedId = localStorage.getItem(positionKey);
+      const savedIndex = attempt.questionIds.findIndex((id) => id === savedId);
+      if (savedIndex >= 0) setIndex(savedIndex);
+    } catch {}
+  }, [positionKey, attempt.questionIds]);
+  function navigate(nextIndex: number) {
+    if (lock.current || pending || finishing) return;
+    setIndex(nextIndex);
+    setHelp(false);
+    try {
+      localStorage.setItem(positionKey, attempt.questionIds[nextIndex]);
+    } catch {}
+  }
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -181,6 +199,23 @@ function Workspace({
   const selected =
     pending?.questionId === questionId ? pending.selected : answer?.selected;
   const blocked = busy || !!pending || finishing;
+  const answersById = new Map(
+    answers.map((answer) => [answer.questionId, answer]),
+  );
+  const reviewGroups = [
+    {
+      title: "Sin responder",
+      questions: attempt.questionIds.flatMap((id, index) =>
+        !answersById.has(id) ? [index] : [],
+      ),
+    },
+    {
+      title: "Marcadas para revisar",
+      questions: attempt.questionIds.flatMap((id, index) =>
+        answersById.get(id)?.flagged ? [index] : [],
+      ),
+    },
+  ];
   return (
     <div className="exam-page">
       <header className="exam-header">
@@ -223,10 +258,7 @@ function Workspace({
                 <button
                   key={q}
                   disabled={blocked}
-                  onClick={() => {
-                    setIndex(i);
-                    setHelp(false);
-                  }}
+                  onClick={() => navigate(i)}
                   aria-label={`Pregunta ${i + 1}${a ? ", respondida" : ""}${a?.flagged ? ", marcada para revisar" : ""}`}
                   aria-current={i === index ? "step" : undefined}
                   className={`${a ? "answered" : ""} ${a?.flagged ? "flagged" : ""}`}
@@ -251,7 +283,12 @@ function Workspace({
             Puedes volver a cualquier pregunta antes de finalizar.
           </p>
         </aside>
-        <main id="main" className="question-main">
+        <main
+          id="main"
+          className="question-main"
+          ref={questionMain}
+          tabIndex={-1}
+        >
           <div className="question-topline">
             <span className="eyebrow">
               PREGUNTA {index + 1} DE {attempt.questionIds.length}
@@ -346,10 +383,7 @@ function Workspace({
             <Button
               variant="secondary"
               disabled={index === 0 || blocked}
-              onClick={() => {
-                setIndex(index - 1);
-                setHelp(false);
-              }}
+              onClick={() => navigate(index - 1)}
             >
               <ArrowLeft size={17} />
               Anterior
@@ -358,13 +392,7 @@ function Workspace({
               {index + 1} / {attempt.questionIds.length}
             </span>
             {index < attempt.questionIds.length - 1 ? (
-              <Button
-                disabled={blocked}
-                onClick={() => {
-                  setIndex(index + 1);
-                  setHelp(false);
-                }}
-              >
+              <Button disabled={blocked} onClick={() => navigate(index + 1)}>
                 Siguiente
                 <ArrowRight size={17} />
               </Button>
@@ -388,7 +416,17 @@ function Workspace({
       <Dialog.Root open={review} onOpenChange={setReview}>
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="dialog-content">
+          <Dialog.Content
+            className="dialog-content"
+            onCloseAutoFocus={(event) => {
+              if (reviewJump.current) {
+                event.preventDefault();
+                reviewJump.current = false;
+                questionMain.current?.focus({ preventScroll: true });
+                questionMain.current?.scrollIntoView({ block: "start" });
+              }
+            }}
+          >
             <Dialog.Title>Antes de finalizar</Dialog.Title>
             <Dialog.Description>
               Has respondido {answers.length} de {attempt.questionIds.length}{" "}
@@ -397,10 +435,39 @@ function Workspace({
                 ? "Las preguntas sin responder contarán como incorrectas."
                 : "Todas tus respuestas están guardadas."}
             </Dialog.Description>
-            <p>
-              {answers.filter((a) => a.flagged).length} preguntas marcadas para
-              revisar.
-            </p>
+            <div className="review-groups">
+              {reviewGroups.map(({ title, questions }) => (
+                <section
+                  className="review-group"
+                  key={title}
+                  aria-label={title}
+                >
+                  <h3>
+                    {title} <span>({questions.length})</span>
+                  </h3>
+                  {questions.length ? (
+                    <div className="review-questions">
+                      {questions.map((i) => (
+                        <button
+                          key={attempt.questionIds[i]}
+                          disabled={blocked}
+                          aria-label={`Ir a la pregunta ${i + 1}`}
+                          onClick={() => {
+                            navigate(i);
+                            reviewJump.current = true;
+                            setReview(false);
+                          }}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>Ninguna.</p>
+                  )}
+                </section>
+              ))}
+            </div>
             <p className="muted">
               Después de finalizar no podrás cambiar las respuestas de esta
               sesión.

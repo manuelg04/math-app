@@ -40,6 +40,10 @@ The public alias responds with HTTP 200 and reports `neat-porcupine-628.convex.c
 
 The public landing page was inspected in the browser. Vercel branch tracking now points to `refactor/convex-rq-plus`, and its runtime is Node.js 22. Frontend Git deployments are automatic for that branch; Convex backend changes still require `npx convex deploy -y` before the frontend consumes them.
 
+The repository's `vercel.json` requires `npm run verify` for frontend deployments: route type generation, TypeScript, ESLint, tests, then the production build. A failed check prevents that deployment from publishing.
+
+Timed assessments show instructions before creating the attempt. The current question is remembered per account and attempt in the same browser when storage is available. Final review links lead directly to unanswered or flagged questions without submitting the attempt.
+
 Currency rendering preserves literal Colombian peso amounts while retaining LaTeX formulas. The regression test covers multiple prices in a sentence, price tables, coin expressions, inline algebra, and display formulas.
 
 A 390-pixel browser check confirmed that wide question and answer tables scroll inside their cards while the page itself stays within the viewport. Table headings and peso amounts remain unbroken. Production results and logout were also checked in the browser.
