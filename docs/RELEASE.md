@@ -33,3 +33,9 @@ This is an application and academic-content migration. Historical student accoun
 The Better Auth React provider currently has an upstream type compatibility issue with security-patched Better Auth 1.6.x. A single boundary assertion in `src/app/providers.tsx` adapts the provider's exported client type; live session and password flows were checked. Runtime auth is not replaced or bypassed.
 
 Vercel can be transferred to La Salle when the destination team is ready and Manuel has the required role in both teams. Convex project ownership, OpenAI credentials, and any future email sender must be handled separately. Deploy Convex before deploying frontend code that needs new functions. Existing catalog versions must be retained while referenced by attempts.
+
+## Public production verification
+
+The public alias responds with HTTP 200 and reports `neat-porcupine-628.convex.cloud` as its backend. A production test account completed registration, onboarding, profile-photo upload and retrieval, entry assessment, training placement, regular hints, AI example generation, distinct-question progress, exit assessment, and password change/login. Invalid image content was rejected. Password recovery remains unavailable as agreed.
+
+The public landing page was inspected in the browser. Vercel branch tracking now points to `refactor/convex-rq-plus`, and its runtime is Node.js 22. Frontend Git deployments are automatic for that branch; Convex backend changes still require `npx convex deploy -y` before the frontend consumes them.

@@ -34,6 +34,23 @@ await client.mutation("profiles:complete", {
   program: "INGENIERIA DE SOFTWARE PRESENCIAL",
 });
 assert.equal((await client.query("profiles:me", {})).onboarded, true);
+const png = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII=",
+  "base64",
+);
+await client.action("profiles:uploadPhoto", {
+  bytes: png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength),
+  contentType: "image/png",
+});
+const profile = await client.query("profiles:me", {});
+assert.ok(profile.photo);
+assert.equal((await fetch(profile.photo)).status, 200);
+await assert.rejects(
+  client.action("profiles:uploadPhoto", {
+    bytes: new TextEncoder().encode("not an image").buffer,
+    contentType: "image/png",
+  }),
+);
 const entry = await client.mutation("exams:start", { kind: "ENTRY" });
 const session = await client.query("exams:session", { id: entry });
 assert.equal(session.attempt.questionIds.length, 35);
@@ -73,6 +90,26 @@ assert.equal(
   ).state,
   "ready",
 );
+if (process.env.TEST_AI === "1") {
+  await client.mutation("aids:request", {
+    id: training,
+    questionId: practice.attempt.questionIds[0],
+    key: "ai",
+  });
+  const started = Date.now();
+  let state;
+  do {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    state = await client.query("aids:status", {
+      id: training,
+      questionId: practice.attempt.questionIds[0],
+      key: "ai",
+    });
+  } while (state.state === "pending" && Date.now() - started < 95000);
+  assert.equal(state.state, "ready", state.error || "AI did not complete");
+  assert.ok(state.text.length > 80);
+  console.log("AI example generated successfully");
+}
 for (const questionId of practice.attempt.questionIds.slice(
   0,
   dashboard.plan.minimum,
@@ -117,6 +154,7 @@ console.log(
       "signup",
       "JWT session",
       "onboarding",
+      "photo upload/storage/validation",
       "entry start/save/submit",
       "training placement",
       "help content",
