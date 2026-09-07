@@ -1715,3 +1715,11 @@ progress::-moz-progress-bar {
   white-space: nowrap;
   overflow-wrap: normal;
 }
+.choices,
+.choice {
+  min-width: 0;
+}
+.choice > .math-content {
+  flex: 1 1 0%;
+  width: 0;
+}

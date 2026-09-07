@@ -41,3 +41,5 @@ The public alias responds with HTTP 200 and reports `neat-porcupine-628.convex.c
 The public landing page was inspected in the browser. Vercel branch tracking now points to `refactor/convex-rq-plus`, and its runtime is Node.js 22. Frontend Git deployments are automatic for that branch; Convex backend changes still require `npx convex deploy -y` before the frontend consumes them.
 
 Currency rendering preserves literal Colombian peso amounts while retaining LaTeX formulas. The regression test covers multiple prices in a sentence, price tables, coin expressions, inline algebra, and display formulas.
+
+A 390-pixel browser check confirmed that wide question and answer tables scroll inside their cards while the page itself stays within the viewport. Table headings and peso amounts remain unbroken. Production results and logout were also checked in the browser.
