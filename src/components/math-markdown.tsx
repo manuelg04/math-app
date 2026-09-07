@@ -1,4 +1,5 @@
 "use client";
+import { prepareMathText } from "@/lib/math-text";
 import Image from "next/image";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -28,7 +29,7 @@ export default function MathMarkdown({ children }: { children: string }) {
           ),
         }}
       >
-        {children}
+        {prepareMathText(children)}
       </Markdown>
     </div>
   );

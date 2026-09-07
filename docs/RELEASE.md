@@ -20,7 +20,7 @@ Passwords use Better Auth's password hashing and session management. Authenticat
 
 ## Verification completed before deployment
 
-- TypeScript, ESLint, six backend/domain test scenarios, and production build passed.
+- TypeScript, ESLint, seven backend/domain/rendering test scenarios, and production build passed.
 - Dependency audit reported zero vulnerabilities after removing obsolete dependencies and replacing the legacy spreadsheet parser with Python standard-library parsing.
 - Live development smoke test passed signup, token creation, onboarding, entry/save/submit, placement, training hints, distinct progress, exit unlock/submit, password change, and login.
 - Browser checks confirmed login, dashboard, training start, answer persistence after reload, and a usable 390-pixel mobile dashboard.
@@ -39,3 +39,5 @@ Vercel can be transferred to La Salle when the destination team is ready and Man
 The public alias responds with HTTP 200 and reports `neat-porcupine-628.convex.cloud` as its backend. A production test account completed registration, onboarding, profile-photo upload and retrieval, entry assessment, training placement, regular hints, AI example generation, distinct-question progress, exit assessment, and password change/login. Invalid image content was rejected. Password recovery remains unavailable as agreed.
 
 The public landing page was inspected in the browser. Vercel branch tracking now points to `refactor/convex-rq-plus`, and its runtime is Node.js 22. Frontend Git deployments are automatic for that branch; Convex backend changes still require `npx convex deploy -y` before the frontend consumes them.
+
+Currency rendering preserves literal Colombian peso amounts while retaining LaTeX formulas. The regression test covers multiple prices in a sentence, price tables, coin expressions, inline algebra, and display formulas.
