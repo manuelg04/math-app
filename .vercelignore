@@ -1,0 +1,8 @@
+docs/
+scripts/legacy/
+prisma/
+data/*.docx
+data/*.xlsx
+data/*.md
+data/*.jsonl
+*.log

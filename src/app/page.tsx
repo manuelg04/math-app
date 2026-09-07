@@ -1,70 +1,80 @@
 import Link from "next/link";
-
-export default function Home() {
+import { Brand } from "@/components/brand";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ChartNoAxesCombined,
+  Compass,
+  BookOpen,
+} from "lucide-react";
+export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-secondary to-secondary/80 px-6 py-12">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
-        <div className="flex flex-1 flex-col gap-8 text-center lg:text-left">
-          <div className="space-y-6">
-            <span className="inline-block rounded-full bg-primary/20 px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary">
-              RQ+
-            </span>
-            <h1 className="text-4xl font-bold leading-tight text-foreground lg:text-6xl">
-              Domina las matemáticas con un acompañamiento inteligente
-            </h1>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground lg:mx-0 lg:text-xl">
-              Practica, recibe retroalimentación inmediata y sigue un plan personalizado. Nuestra plataforma te acompaña paso a paso para alcanzar tus objetivos académicos.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start">
-            <Link
-              href="/registro"
-              className="inline-flex items-center justify-center rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl"
-            >
-              Comenzar gratis
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-xl border-2 border-border bg-white px-8 py-4 text-base font-semibold text-foreground transition-all hover:border-primary hover:bg-primary/5 hover:text-primary"
-            >
-              Ya tengo una cuenta
-            </Link>
-          </div>
+    <main id="main" className="landing">
+      <nav className="landing-nav">
+        <Brand />
+        <Link href="/login">
+          Iniciar sesión <ArrowUpRight size={16} />
+        </Link>
+      </nav>
+      <section className="landing-hero">
+        <span className="eyebrow">TU ESPACIO DE RAZONAMIENTO CUANTITATIVO</span>
+        <h1>
+          Las respuestas importan.
+          <br />
+          <em>Entenderlas, aún más.</em>
+        </h1>
+        <p>
+          Descubre tus fortalezas, practica con un plan personal
+          <br className="desktop-only" /> y dale sentido a cada paso de tu
+          aprendizaje.
+        </p>
+        <div className="hero-actions">
+          <Link className="button-link" href="/registro">
+            Empieza tu recorrido <ArrowRight size={19} />
+          </Link>
+          <Link href="/login" className="quiet-link">
+            Ya tengo una cuenta
+          </Link>
         </div>
-        <div className="flex flex-1 justify-center lg:justify-end">
-          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl lg:p-10">
-            <h2 className="mb-8 text-2xl font-bold text-foreground">
-              Ventajas de RQ+
-            </h2>
-            <ul className="space-y-6">
-              <li className="flex items-start gap-4">
-                <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <span className="h-2 w-2 rounded-full bg-white" />
-                </span>
-                <span className="text-base leading-relaxed text-muted-foreground">
-                  Sesiones adaptativas y retos personalizados cada semana.
-                </span>
-              </li>
-              <li className="flex items-start gap-4">
-                <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <span className="h-2 w-2 rounded-full bg-white" />
-                </span>
-                <span className="text-base leading-relaxed text-muted-foreground">
-                  Seguimiento de progreso con métricas claras y comprensibles.
-                </span>
-              </li>
-              <li className="flex items-start gap-4">
-                <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <span className="h-2 w-2 rounded-full bg-white" />
-                </span>
-                <span className="text-base leading-relaxed text-muted-foreground">
-                  Comunidad y mentores listos para resolver tus dudas en vivo.
-                </span>
-              </li>
-            </ul>
-          </div>
+        <div className="hero-caption">
+          <span className="status-dot" />A tu ritmo. Con una ruta clara.
         </div>
-      </div>
+      </section>
+      <section className="landing-journey">
+        {[
+          {
+            Icon: Compass,
+            n: "01",
+            title: "Encuentra tu punto de partida",
+            text: "Una evaluación inicial para conocer tus habilidades.",
+          },
+          {
+            Icon: BookOpen,
+            n: "02",
+            title: "Aprende haciendo",
+            text: "Preguntas y ayudas adaptadas a tu plan de entrenamiento.",
+          },
+          {
+            Icon: ChartNoAxesCombined,
+            n: "03",
+            title: "Mira lo que has logrado",
+            text: "Compara tus resultados y reconoce tu progreso.",
+          },
+        ].map(({ Icon, n, title, text }) => (
+          <article key={n}>
+            <div>
+              <Icon size={24} />
+              <span>{n}</span>
+            </div>
+            <h2>{title}</h2>
+            <p>{text}</p>
+          </article>
+        ))}
+      </section>
+      <footer className="landing-footer">
+        <Brand />
+        <span>Aprende a razonar. Avanza con confianza.</span>
+      </footer>
     </main>
   );
 }

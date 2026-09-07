@@ -1,0 +1,79 @@
+
+> math-app@0.1.0 build
+> npx prisma generate --schema=./prisma/schema.prisma && next build --turbopack
+
+Prisma schema loaded from prisma/schema.prisma
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.16.2 -> 8.0.0-rc.13                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (v6.16.2) to ./node_modules/@prisma/client in 85ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+   ▲ Next.js 15.5.9 (Turbopack)
+
+   Creating an optimized production build ...
+ ✓ Finished writing to disk in 253ms
+ ✓ Compiled successfully in 2.7s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/21) ...
+   Generating static pages (5/21) 
+   Generating static pages (10/21) 
+   Generating static pages (15/21) 
+ ✓ Generating static pages (21/21)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                         Size  First Load JS
+┌ ○ /                                                0 B         127 kB
+├ ○ /_not-found                                      0 B         124 kB
+├ ƒ /api/auth/confirm-reset                          0 B            0 B
+├ ƒ /api/auth/login                                  0 B            0 B
+├ ƒ /api/auth/logout                                 0 B            0 B
+├ ƒ /api/auth/register                               0 B            0 B
+├ ƒ /api/auth/request-reset                          0 B            0 B
+├ ƒ /api/exams/[slug]                                0 B            0 B
+├ ƒ /api/exams/attempts/[id]/aid                     0 B            0 B
+├ ƒ /api/exams/attempts/[id]/aid/ai                  0 B            0 B
+├ ƒ /api/exams/attempts/[id]/answer                  0 B            0 B
+├ ƒ /api/exams/attempts/[id]/submit                  0 B            0 B
+├ ƒ /api/exams/attempts/[id]/validate                0 B            0 B
+├ ƒ /api/exams/attempts/start                        0 B            0 B
+├ ƒ /api/exams/check-active                          0 B            0 B
+├ ƒ /api/me                                          0 B            0 B
+├ ƒ /api/onboarding/complete                         0 B            0 B
+├ ƒ /api/onboarding/profile                          0 B            0 B
+├ ƒ /api/user/upload-photo                           0 B            0 B
+├ ƒ /dashboard                                    6.8 kB         131 kB
+├ ƒ /dashboard/exams/[slug]                       199 kB         322 kB
+├ ƒ /dashboard/exams/[slug]/results/[attemptId]      0 B         127 kB
+├ ○ /login                                       1.41 kB         134 kB
+├ ƒ /onboarding                                  8.99 kB         159 kB
+├ ƒ /onboarding/test-placeholder/[type]          2.07 kB         126 kB
+├ ○ /recuperar                                    1.2 kB         134 kB
+├ ○ /registro                                    3.98 kB         163 kB
+└ ƒ /restablecer                                 1.37 kB         134 kB
++ First Load JS shared by all                     137 kB
+  ├ chunks/4c15b34e48e60158.js                   13.1 kB
+  ├ chunks/a06d3b8b68602253.js                   17.2 kB
+  ├ chunks/a9f3c0f30f3402f6.js                   59.1 kB
+  ├ chunks/886bf01b52790c53.css                  13.8 kB
+  └ other shared chunks (total)                  34.3 kB
+
+
+ƒ Middleware                                     39.5 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -1,28 +1,28 @@
 import type { Metadata } from "next";
-import { Work_Sans } from "next/font/google";
-import { ToastProvider } from "@/hooks/use-toast";
+import { Work_Sans, Fraunces } from "next/font/google";
+import { Providers } from "./providers";
+import { getToken } from "@/lib/auth-server";
 import "./globals.css";
-import "katex/dist/katex.min.css";
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  variable: "--font-work-sans",
-});
-
+const sans = Work_Sans({ subsets: ["latin"], variable: "--font-work-sans" });
+const serif = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
 export const metadata: Metadata = {
-  title: "RQ+ | Autenticación",
-  description: "Portal de aprendizaje con autenticación segura",
+  title: { default: "RQ+ · Aprende a razonar", template: "%s · RQ+" },
+  description:
+    "Tu espacio de razonamiento cuantitativo. Evalúa tus habilidades, practica a tu ritmo y descubre tu progreso.",
 };
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  const token = await getToken();
   return (
     <html lang="es">
-      <body className={`${workSans.variable} bg-background font-sans text-foreground antialiased`}>
-        <ToastProvider>{children}</ToastProvider>
+      <body className={`${sans.variable} ${serif.variable}`}>
+        <a className="skip-link" href="#main">
+          Saltar al contenido
+        </a>
+        <Providers initialToken={token}>{children}</Providers>
       </body>
     </html>
   );

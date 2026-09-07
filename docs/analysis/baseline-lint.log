@@ -1,0 +1,65 @@
+
+> math-app@0.1.0 lint
+> eslint
+
+
+/Users/manuel/Documents/RQ+/math-app/scripts/import-from-excel.js
+  2:1   error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  3:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  4:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  5:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  6:26  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/ingest_exam_from_jsonl.js
+   1:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+   4:1   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+   6:12  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+   7:13  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+   8:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+   9:16  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  10:26  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/patch_prueba_general_71_116_from_md.js
+   1:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  21:12  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  22:16  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  23:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  24:26  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  25:1   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/seed_exam_from_yaml.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/manuel/Documents/RQ+/math-app/scripts/seed_prueba_general_121_150_from_md.js
+   2:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  12:5   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  13:12  warning  '_' is defined but never used                                                  @typescript-eslint/no-unused-vars
+  15:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  16:16  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  17:28  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/seed_prueba_general_61_120_from_md.js
+  1:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  3:12  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  4:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  5:26  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  6:1   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/seed_saberpro_from_md.js
+  1:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  2:1   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  3:12  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  4:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  5:26  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+/Users/manuel/Documents/RQ+/math-app/scripts/sync_prueba_general_61_120_meta_from_md.js
+   2:1   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  15:7   error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  15:44  warning  '_' is defined but never used                                                  @typescript-eslint/no-unused-vars
+  17:12  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  18:14  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+  19:26  error    A `require()` style import is forbidden                                        @typescript-eslint/no-require-imports
+
+✖ 41 problems (32 errors, 9 warnings)
+  0 errors and 7 warnings potentially fixable with the `--fix` option.
+
