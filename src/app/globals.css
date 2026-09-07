@@ -1710,3 +1710,8 @@ progress::-moz-progress-bar {
 .comparison thead {
   color: var(--muted);
 }
+.math-content th,
+.math-content td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
