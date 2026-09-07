@@ -42,6 +42,8 @@ The public landing page was inspected in the browser. Vercel branch tracking now
 
 The repository's `vercel.json` requires `npm run verify` for frontend deployments: route type generation, TypeScript, ESLint, tests, then the production build. A failed check prevents that deployment from publishing.
 
+Turbopack's persistent build cache is disabled because a cached Vercel build served the previous global stylesheet alongside updated components. Production checks must include visual inspection of changed styles as well as the release commit.
+
 Timed assessments show instructions before creating the attempt. The current question is remembered per account and attempt in the same browser when storage is available. Final review links lead directly to unanswered or flagged questions without submitting the attempt.
 
 Currency rendering preserves literal Colombian peso amounts while retaining LaTeX formulas. The regression test covers multiple prices in a sentence, price tables, coin expressions, inline algebra, and display formulas.
